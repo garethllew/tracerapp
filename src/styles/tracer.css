@@ -156,6 +156,30 @@ kbd {
   .bar .head { display: none; }
 }
 
+/* ══ Style hints (AI-writing tells) ══ */
+.hints { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--bdrs); }
+.hints-head { margin: 0 0 6px; }
+.hints-sub { color: var(--t3); text-transform: none; letter-spacing: 0; }
+.hints ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.hints li {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.5; color: var(--t2); cursor: default;
+}
+.hints .strength { display: inline-flex; gap: 2px; transform: translateY(-1px); }
+.hints .strength i { width: 4px; height: 4px; border-radius: 50%; background: rgba(127,127,127,.25); }
+.hints .strength i.on { background: var(--t2); }
+.hints li.artefact .strength i.on { background: var(--ai); }
+.hints .hint-label { color: var(--t1); }
+.hints .hint-count { color: var(--t3); }
+.hints .hint-tag { color: var(--ai-ink); font-size: 10px; }
+.hints .hint-ex { display: inline-flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.hints code {
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--t1);
+  background: var(--surf2); border: 1px solid var(--bdr); border-radius: 4px; padding: 0 5px;
+  max-width: 100%; overflow-wrap: anywhere;
+}
+.hints .hint-detail { color: var(--t3); }
+
 /* ══ Title-bar cog (Vixer .tab-cog) ══ */
 .tab-cog { color: var(--t3); transition: color .13s, transform .2s, background .12s; }
 .tab-cog:hover { color: var(--t2); background: rgba(127,127,127,.12); transform: rotate(30deg); }

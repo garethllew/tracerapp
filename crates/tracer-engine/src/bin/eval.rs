@@ -208,6 +208,8 @@ fn main() -> Result<()> {
 
     println!("{:<34} {:>6} {:>4} {:>5} {:>8} {:>5} {:>5} {:>6} {:>7}  result", "sample", "exp", "exp%", "words", "gate", "AI%", "doc", "conf", "ms");
     let (mut ok_clear, mut n_clear, mut mixed_err, mut n_mixed, mut gated) = (0, 0, 0f32, 0, 0);
+    // Tells per expected label: (samples, samples with any tell, total tells, samples with an artefact).
+    let mut tell_stats: std::collections::BTreeMap<String, (usize, usize, usize, usize)> = Default::default();
     for s in &samples {
         let t = Instant::now();
         let a = analyze_with(&s.body, det, style, &cfg)?;
@@ -239,6 +241,15 @@ fn main() -> Result<()> {
             verdict,
             flags(&a)
         );
+        let e = tell_stats.entry(s.expected.clone()).or_default();
+        e.0 += 1;
+        e.1 += (!a.tells.is_empty()) as usize;
+        e.2 += a.tells.len();
+        e.3 += a.tells.iter().any(|t| t.artefact) as usize;
+        if args.verbose && !a.tells.is_empty() {
+            let list: Vec<String> = a.tells.iter().map(|t| format!("{}x{}{}", t.id, t.count, if t.artefact { "!" } else { "" })).collect();
+            println!("      tells: {}", list.join(", "));
+        }
         if args.verbose && (s.expected == "mixed" || verdict.starts_with("MISS")) && a.gate != Gate::TooShort {
             for seg in a.segments.iter().filter(|g| g.kind == PieceKind::Prose) {
                 let p = seg.p_ai.map_or("  -  ".into(), |p| format!("{p:.2}"));
@@ -251,6 +262,9 @@ fn main() -> Result<()> {
         "\nclear human/AI correct: {ok_clear}/{n_clear} | mixed mean |AI% error|: {:.0} pts over {n_mixed} | gated too-short: {gated}",
         if n_mixed > 0 { mixed_err / n_mixed as f32 * 100.0 } else { 0.0 }
     );
+    for (exp, (n, any, total, art)) in &tell_stats {
+        println!("tells on {exp} texts: {any}/{n} have any ({:.1} per text) | {art}/{n} have a scoring artefact", *total as f32 / (*n).max(1) as f32);
+    }
     Ok(())
 }
 
@@ -275,6 +289,11 @@ fn flags(a: &Analysis) -> String {
     }
     if a.truncated {
         f.push("truncated");
+    }
+    let art: Vec<&str> = a.tells.iter().filter(|t| t.artefact).map(|t| t.id.as_str()).collect();
+    let art = (!art.is_empty()).then(|| format!("artefact: {}", art.join("+")));
+    if let Some(x) = &art {
+        f.push(x);
     }
     if f.is_empty() { String::new() } else { format!("  [{}]", f.join(", ")) }
 }

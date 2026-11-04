@@ -8,6 +8,7 @@ use serde::Serialize;
 
 use crate::config::EngineConfig;
 use crate::detector::Detector;
+use crate::tells::{self, Tell};
 use crate::text::{paragraph_ids, segment, span_text, PieceKind};
 use crate::window::{build_doc_chunks, build_group_chunks, build_grouped_windows, build_groups};
 
@@ -75,6 +76,9 @@ pub struct Analysis {
     /// Model calls' worth of chunks (windows + doc chunks, deduplicated).
     pub chunks_scored: usize,
     pub segments: Vec<Segment>,
+    /// AI-writing tells found (tells.rs), strongest first: shown as reasons.
+    /// Only `artefact` ones affect the score.
+    pub tells: Vec<Tell>,
 }
 
 /// Analyse with one detector (desklib).
@@ -111,6 +115,7 @@ pub fn analyze_with(text: &str, detector: &dyn Detector, style: Option<&dyn Dete
         truncated: false,
         chunks_scored: 0,
         segments: Vec::new(),
+        tells: tells::find(text, cfg.artefact_min_weight),
     };
     let mut p_ai: Vec<Option<f32>> = vec![None; pieces.len()];
 
@@ -200,6 +205,32 @@ pub fn analyze_with(text: &str, detector: &dyn Detector, style: Option<&dyn Dete
             a.chunks_scored += stexts.len();
         }
 
+        // Copy-paste artefact (tells.rs): the paragraph group it sits in reads
+        // AI. Near-certain evidence, so those sentences aren't "undecided".
+        let mut artefact_lifted = vec![false; n_scored];
+        if cfg.artefact_lift_score > 0.0 {
+            let last_end = pieces[scored[n_scored - 1]].range.end;
+            for t in a.tells.iter().filter(|t| t.artefact) {
+                for span in &t.spans {
+                    if a.truncated && span.start >= last_end {
+                        continue; // beyond the scored text
+                    }
+                    let pi = pieces.partition_point(|p| p.range.end <= span.start).min(pieces.len() - 1);
+                    let mut ks: Vec<usize> = (0..n_scored).filter(|&k| para_of[scored[k]] == para_of[pi]).collect();
+                    if ks.is_empty() {
+                        // e.g. a URL on its own line: the nearest scored sentence.
+                        ks = (0..n_scored).min_by_key(|&k| scored[k].abs_diff(pi)).into_iter().collect();
+                    }
+                    for g in groups.iter().filter(|g| ks.iter().any(|k| g.contains(k))) {
+                        for k in g.clone() {
+                            sent_p[k] = sent_p[k].max(cfg.artefact_lift_score);
+                            artefact_lifted[k] = true;
+                        }
+                    }
+                }
+            }
+        }
+
         let total = a.scored_words.max(1) as f32;
         let ai_words: usize = sent_p.iter().zip(&sw).filter(|(p, _)| **p >= cfg.ai_threshold).map(|(_, w)| w).sum();
         // Undecided: the windows' or the final score is in the ambiguous
@@ -210,7 +241,7 @@ pub fn analyze_with(text: &str, detector: &dyn Detector, style: Option<&dyn Dete
         let is_ai = |p: f32| p >= cfg.ai_threshold;
         let in_band = |p: f32| p >= cfg.ambiguous_low && p <= cfg.ambiguous_high;
         let ambiguous_words: usize = (0..n_scored)
-            .filter(|&k| in_band(sent_p[k]) || in_band(window_p[k]) || is_ai(sent_p[k]) != is_ai(window_p[k]))
+            .filter(|&k| !artefact_lifted[k] && (in_band(sent_p[k]) || in_band(window_p[k]) || is_ai(sent_p[k]) != is_ai(window_p[k])))
             .map(|k| sw[k])
             .sum();
         let ai_share = ai_words as f32 / total;
@@ -225,6 +256,14 @@ pub fn analyze_with(text: &str, detector: &dyn Detector, style: Option<&dyn Dete
         a.confidence = Some(confidence(a.scored_words, ambiguous_words as f32 / total, a.disagreement, non_english, cfg));
         a.ai_share = Some(ai_share);
         a.doc_score = doc_score;
+        let mut para_words: Vec<usize> = Vec::new();
+        for k in 0..n_scored {
+            match para_words.last_mut() {
+                Some(w) if k > 0 && sp[k] == sp[k - 1] => *w += sw[k],
+                _ => para_words.push(sw[k]),
+            }
+        }
+        a.tells.extend(tells::signals(&sw, &para_words, text));
         for (k, &i) in scored.iter().enumerate() {
             p_ai[i] = Some(sent_p[k]);
         }
@@ -570,6 +609,42 @@ mod tests {
         let a = analyze(&para(HUMAN, 20), &Mild, &cfg()).unwrap();
         assert_eq!(a.ai_share, Some(0.0));
         assert_eq!(a.confidence, Some(Confidence::Low));
+    }
+
+    // ---- AI-writing tells (hybrid: shown always, only artefacts score)
+
+    #[test]
+    fn artefact_lifts_only_its_paragraph() {
+        // Human body, then a paragraph with a template placeholder left in.
+        let t = format!("{}\n\n{}\n\n{} Best, [Your Name].", para(HUMAN, 6), para(HUMAN, 6), para(HUMAN, 5));
+        let a = analyze(&t, &Constant(0.05), &cfg()).unwrap();
+        assert!(a.tells.iter().any(|t| t.id == "placeholder" && t.artefact));
+        let ps: Vec<f32> = a.segments.iter().filter_map(|s| s.p_ai).collect();
+        assert!(ps[..12].iter().all(|&p| p < 0.1), "{ps:?}");
+        assert!(ps[12..].iter().all(|&p| (p - 0.95).abs() < 1e-6), "{ps:?}");
+        let share = a.ai_share.unwrap();
+        assert!(share > 0.2 && share < 0.4, "share {share}");
+        // Near-certain evidence: the lifted paragraph doesn't count as undecided.
+        assert_eq!(a.confidence, Some(Confidence::High));
+        // Weight 6 = no tell may score.
+        let off = EngineConfig { artefact_min_weight: 6, ..cfg() };
+        assert_eq!(analyze(&t, &Constant(0.05), &off).unwrap().ai_share, Some(0.0));
+    }
+
+    #[test]
+    fn style_tells_are_shown_but_never_score() {
+        let t = format!("{} It’s fast — really fast. Additionally, it’s robust. Moreover, it’s seamless and crucial.", para(HUMAN, 10));
+        let a = analyze(&t, &Constant(0.05), &cfg()).unwrap();
+        assert!(a.tells.iter().any(|t| t.id == "em-dash"));
+        assert!(a.tells.iter().all(|t| !t.artefact));
+        assert_eq!(a.ai_share, Some(0.0));
+    }
+
+    #[test]
+    fn tells_are_reported_even_when_too_short_to_score() {
+        let a = analyze("As an AI language model, I can't.", &Constant(0.9), &cfg()).unwrap();
+        assert_eq!(a.gate, Gate::TooShort);
+        assert!(a.tells.iter().any(|t| t.id == "ai-self-reference"));
     }
 
     #[test]

@@ -71,6 +71,13 @@ pub struct EngineConfig {
     /// it is bimodal (AI 0.90-1.00 or <= 0.56; human 0.95-1.00 or <= 0.20),
     /// so 0.8 sits in the gap. Lower = more AI caught, more humans accused.
     pub style_doc_lift_threshold: f32,
+    /// AI-writing tells (data/ai-tells.json) at or above this weight are
+    /// copy-paste artefacts ("[Your Name]", oaicite / utm_source=chatgpt.com,
+    /// U+2011 hyphens, "As an AI language model"): the paragraph they're in
+    /// is raised to `artefact_lift_score`. Lighter tells are shown, never
+    /// scored (user decision 2026-11-04). 6 = no tell affects the score.
+    pub artefact_min_weight: u8,
+    pub artefact_lift_score: f32,
 
     // ---- classification + confidence
     /// A sentence counts as AI when its P(AI) is at or above this.
@@ -118,6 +125,8 @@ impl Default for EngineConfig {
             context_gate: 0.5,
             style_lift_threshold: 0.95,
             style_doc_lift_threshold: 0.8,
+            artefact_min_weight: 5,
+            artefact_lift_score: 0.95,
             ai_threshold: 0.5,
             ambiguous_low: 0.15,
             ambiguous_high: 0.85,

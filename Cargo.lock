@@ -4885,7 +4885,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "ort",
+ "regex",
  "serde",
+ "serde_json",
  "tokenizers",
  "unicode-segmentation",
  "whatlang",

@@ -14,10 +14,12 @@ pub mod analyze;
 pub mod config;
 pub mod detector;
 pub mod models;
+pub mod tells;
 pub mod text;
 pub mod window;
 
 pub use analyze::{analyze, analyze_with, Analysis, Confidence, Gate, Segment};
 pub use config::EngineConfig;
+pub use tells::Tell;
 pub use detector::{Detector, DetectorOptions, MaxEnsemble, OnnxDetector};
 pub use text::PieceKind;
