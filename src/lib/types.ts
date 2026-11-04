@@ -31,7 +31,8 @@ export interface Analysis {
   segments: Segment[];
 }
 
-export type EngineState = "loading" | "ready" | "missing" | "error";
+/** idle = installed but not in memory (loads on the next check; engine.rs). */
+export type EngineState = "idle" | "loading" | "ready" | "missing" | "error";
 
 export interface EngineStatus {
   state: EngineState;

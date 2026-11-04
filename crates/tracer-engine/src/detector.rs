@@ -70,7 +70,7 @@ impl OnnxDetector {
             .map_err(|e| anyhow!("tokenizer truncation: {e}"))?;
         tok.with_padding(None);
 
-        let env = ort::init().with_name("tracer").build().context("creating ONNX Runtime environment")?;
+        let env = environment()?;
         let threads = opts.intra_threads.unwrap_or_else(default_threads);
         let session = Session::builder(&env)?
             .with_optimization_level(GraphOptimizationLevel::Level3)
@@ -137,6 +137,22 @@ impl Detector for OnnxDetector {
     }
 }
 
+/// The process-wide ONNX Runtime environment. ort allows exactly one per
+/// process and remembers it even after it's dropped, so a second `build()`
+/// fails forever. The app unloads and reloads the model (engine.rs), so the
+/// environment is created once and kept for the process lifetime. It's
+/// small; dropping the detector still frees the model's memory.
+fn environment() -> Result<Environment> {
+    static ENV: Mutex<Option<Environment>> = Mutex::new(None);
+    let mut slot = ENV.lock().map_err(|_| anyhow!("ONNX Runtime environment lock poisoned"))?;
+    if let Some(env) = slot.as_ref() {
+        return Ok(env.clone());
+    }
+    let env = ort::init().with_name("tracer").build().context("creating ONNX Runtime environment")?;
+    *slot = Some(env.clone());
+    Ok(env)
+}
+
 pub fn sigmoid(x: f32) -> f32 {
     1.0 / (1.0 + (-x).exp())
 }
@@ -162,6 +178,21 @@ fn batch_spans(sorted_lens: &[usize], max_items: usize, max_tokens: usize) -> Ve
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The app unloads and reloads the model; ort only allows one environment
+    /// per process, so a second load must reuse it rather than fail.
+    #[test]
+    #[ignore]
+    fn load_drop_load_again() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tools/model-export/work/onnx");
+        let (m, t) = (dir.join("tracer-int8.onnx"), dir.join("tokenizer.json"));
+        let a = OnnxDetector::load(&m, &t, &DetectorOptions::default()).unwrap();
+        let p1 = a.score(&["hello there, see you at three".to_string()]).unwrap()[0];
+        drop(a);
+        let b = OnnxDetector::load(&m, &t, &DetectorOptions::default()).expect("second load after drop");
+        let p2 = b.score(&["hello there, see you at three".to_string()]).unwrap()[0];
+        assert_eq!(p1, p2);
+    }
 
     /// A chunk must score the same whatever it's scored alongside.
     /// Needs the exported model: `cargo test --release -- --ignored`.

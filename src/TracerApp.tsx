@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { analyzeText, engineStatus, onEngineStatus, showMainWindow } from "./lib/ipc";
+import { analyzeText, engineStatus, onCheckText, onEngineStatus, onHotkeyError, onOpenSettings } from "./lib/ipc";
+import { applyTheme, DEFAULT_SETTINGS, getSettings, hotkeyError, setSettings } from "./lib/settings";
+import type { Settings } from "./lib/settings";
 import type { Analysis, EngineStatus } from "./lib/types";
 import type { Side } from "./lib/score";
 import { prefersReducedMotion } from "./lib/score";
 import { TitleBar } from "./components/TitleBar";
 import { ResultBar } from "./components/ResultBar";
 import { HighlightedText } from "./components/HighlightedText";
+import { SettingsPanel } from "./components/SettingsPanel";
+import { SetupScreen } from "./components/SetupScreen";
 
 /** Shimmer only when an analysis is slow enough to notice. */
 const BUSY_AFTER_MS = 300;
@@ -22,10 +26,15 @@ export function TracerApp() {
   const [focus, setFocus] = useState<Side | null>(null);
   const [traceKey, setTraceKey] = useState(0);
   const [tracing, setTracing] = useState(false);
+  const [settings, setSettingsState] = useState<Settings>(DEFAULT_SETTINGS);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [hkError, setHkError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const reqId = useRef(0);
   const pending = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const noticeTimer = useRef<number | undefined>(undefined);
   const engineRef = useRef<EngineStatus | null>(null);
   engineRef.current = engine;
 
@@ -34,14 +43,42 @@ export function TracerApp() {
     // the fetch still sees it (fetching first could miss the only event).
     const un = onEngineStatus(setEngine);
     un.then(() => engineStatus()).then(setEngine).catch((e) => setError(String(e)));
-    showMainWindow().catch(() => {});
+    // The window is shown from Rust (and stays hidden on autostart).
     return () => { un.then((f) => f()); };
+  }, []);
+
+  // Settings: load once, follow the theme, track hotkey registration failures.
+  useEffect(() => {
+    getSettings().then(setSettingsState).catch(() => {});
+    const un = onHotkeyError(setHkError);
+    un.then(() => hotkeyError()).then(setHkError).catch(() => {});
+    return () => { un.then((f) => f()); };
+  }, []);
+  useEffect(() => applyTheme(settings.theme), [settings.theme]);
+
+  const changeSettings = useCallback(async (patch: Partial<Settings>): Promise<string | null> => {
+    try {
+      const next = await setSettings(patch);
+      setSettingsState(next);
+      if (patch.hotkey) setHkError(null);
+      return null;
+    } catch (e) {
+      return String(e);
+    }
+  }, []);
+
+  const flash = useCallback((msg: string) => {
+    window.clearTimeout(noticeTimer.current);
+    setNotice(msg);
+    noticeTimer.current = window.setTimeout(() => setNotice(null), 2500);
   }, []);
 
   const run = useCallback(async (t: string) => {
     if (!t.trim()) return;
-    if (engineRef.current?.state !== "ready") {
-      pending.current = t; // runs as soon as the model is loaded
+    // The model loads on demand inside analyze_text (engine.rs); the shimmer
+    // covers the ~1–3 s reload. Only a missing model needs the setup screen.
+    if (engineRef.current?.state === "missing") {
+      pending.current = t; // checked once the download finishes
       return;
     }
     const id = ++reqId.current;
@@ -67,9 +104,9 @@ export function TracerApp() {
     }
   }, []);
 
-  // Model finished loading with a paste waiting.
+  // Model just installed with a paste (or hotkey check) waiting.
   useEffect(() => {
-    if (engine?.state === "ready" && pending.current) {
+    if (engine && engine.state !== "missing" && pending.current) {
       const t = pending.current;
       pending.current = null;
       run(t);
@@ -94,14 +131,28 @@ export function TracerApp() {
     requestAnimationFrame(() => textareaRef.current?.focus());
   }, []);
 
-  // Ctrl+Enter checks, Esc clears; pasting while viewing a result replaces the text.
+  // Hotkey / tray "Check clipboard": the text arrives from Rust.
+  useEffect(() => {
+    const un = onCheckText((t) => {
+      setSettingsOpen(false);
+      if (!t.trim()) { flash("Clipboard is empty"); return; }
+      setText(t);
+      setEditing(false);
+      run(t);
+    });
+    const unSettings = onOpenSettings(() => setSettingsOpen(true));
+    return () => { un.then((f) => f()); unSettings.then((f) => f()); };
+  }, [run, flash]);
+
+  // Ctrl+Enter checks, Esc closes settings first and then clears; pasting while viewing a result replaces the text.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); run(text); }
-      else if (e.key === "Escape") { e.preventDefault(); clear(); }
+      if (e.key === "Escape") { e.preventDefault(); if (settingsOpen) setSettingsOpen(false); else clear(); }
+      else if (settingsOpen) return;
+      else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); run(text); }
     };
     const onPaste = (e: ClipboardEvent) => {
-      if (editing) return; // the textarea handles its own paste
+      if (editing || settingsOpen) return; // the textarea handles its own paste
       const pasted = e.clipboardData?.getData("text/plain") ?? "";
       if (!pasted.trim()) return;
       e.preventDefault();
@@ -111,15 +162,20 @@ export function TracerApp() {
     window.addEventListener("keydown", onKey);
     window.addEventListener("paste", onPaste);
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("paste", onPaste); };
-  }, [text, editing, run, clear]);
+  }, [text, editing, settingsOpen, run, clear]);
 
   const stale = editing && analysis !== null && text !== analysedText && analysis.gate !== "tooShort";
   const empty = !text && editing;
 
   return (
     <div className="app">
-      <TitleBar />
+      <TitleBar settingsOpen={settingsOpen} onSettings={() => setSettingsOpen((o) => !o)} />
 
+      {settingsOpen ? (
+        <SettingsPanel settings={settings} onChange={changeSettings} hotkeyError={hkError} onBack={() => setSettingsOpen(false)} />
+      ) : engine?.state === "missing" ? (
+        <SetupScreen />
+      ) : (<>
       <ResultBar
         analysis={analysis}
         busy={busy}
@@ -151,14 +207,18 @@ export function TracerApp() {
           </div>
         )}
 
-        {empty && <EmptyState engine={engine} />}
+        {empty && <EmptyState hotkey={settings.hotkey} />}
       </main>
 
       <footer className="foot">
         {error ? (
           <p className="footnote err">{error}</p>
-        ) : engine && engine.state !== "ready" ? (
+        ) : notice ? (
+          <p className="footnote warn" role="status">{notice}</p>
+        ) : engine && (engine.state === "loading" || engine.state === "error") ? (
           <p className="footnote warn">{engineMessage(engine)}</p>
+        ) : hkError ? (
+          <p className="footnote warn">Global shortcut unavailable: {hkError}. Change it in Settings.</p>
         ) : (
           <p className="footnote">A rough gauge, not proof. Short, formal or non-native-English writing can be misread as AI.</p>
         )}
@@ -169,6 +229,7 @@ export function TracerApp() {
           </button>
         </div>
       </footer>
+      </>)}
 
       <div
         className="resize-grip"
@@ -192,7 +253,7 @@ function engineMessage(s: EngineStatus): string {
   }
 }
 
-function EmptyState({ engine }: { engine: EngineStatus | null }) {
+function EmptyState({ hotkey }: { hotkey: string }) {
   return (
     <div className="empty" aria-hidden>
       <p className="label">How it works</p>
@@ -201,9 +262,8 @@ function EmptyState({ engine }: { engine: EngineStatus | null }) {
         AI-written, sentence by sentence, on this device. Nothing leaves your computer or is saved.
       </p>
       <p className="hint">
-        <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>H</kbd> checks your clipboard from any app.
+        {hotkey.split("+").map((k, i) => <span key={i}>{i > 0 && " "}<kbd>{k}</kbd></span>)} checks your clipboard from any app.
       </p>
-      {engine?.state === "loading" && <p className="hint">Warming up the model…</p>}
     </div>
   );
 }

@@ -1,0 +1,25 @@
+/* ── First-run setup + Settings → Model ── */
+
+.setup {
+  flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px;
+  padding: 28px 24px 40px;
+}
+.setup h1 {
+  font-family: var(--font-display); font-weight: 800; font-size: 24px; line-height: 1.15;
+  letter-spacing: -.005em; color: var(--t1);
+}
+.setup .body { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.7; color: var(--t2); max-width: 400px; }
+.setup .setup-bar { margin-top: 18px; }
+.setup .setup-bar .fill { clip-path: none; }
+.setup .setup-bar.idle .seg { opacity: .55; }
+.setup-meta { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--t2); min-height: 16px; }
+.setup-meta .err, .model-info .err { color: var(--warn); }
+.setup-actions { margin-top: 10px; }
+.setup .fine { margin-top: 14px; font-size: 9.5px; line-height: 1.6; color: var(--t3); }
+
+.model-info { font-size: 10.5px; color: var(--t2); display: flex; flex-direction: column; gap: 10px; }
+.model-info dl { display: grid; grid-template-columns: 64px 1fr; gap: 4px 10px; }
+.model-info dt { color: var(--t3); }
+.model-info dd { color: var(--t1); min-width: 0; }
+.model-info dd.path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
+.model-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
