@@ -227,11 +227,17 @@ words: 5.6 s → 10.3 s with desklib, 12.8 s with the new rule).
 - **Latency above 1,000 words** roughly doubles (see the table). If that's
   unacceptable, the trade is to skip the gate there and accept desklib's
   window false positives on long texts.
-- **The app isn't wired to the ensemble yet.** `src-tauri` still loads
-  desklib alone and calls `analyze()`, so on its next build it gets the gate
-  (Enron 0/15, Wikipedia 4/15, but hard AI 9 → 7/15, Gemini still 0%) and
-  not the lift. Shipping the ensemble needs the app to download rasbt
-  (model-v2) and call `models::Ensemble::analyze`.
+- **Memory.** The app now loads both models for a check (desklib ~1.5 GB,
+  plus rasbt), still unloading them 60 s after the last check.
+
+## App wiring
+
+`src-tauri` loads `models::Ensemble` and calls `Ensemble::analyze`. The
+model counts as installed only when all four files are present. The
+first-run download fetches desklib from the `model-v1` release and rasbt
+from the new `model-v2` release (pinned sizes and SHA-256s in
+`download.rs`). An install that already has model-v1 verifies those files
+and only fetches the ~305 MB of model-v2.
 
 ## Reproduce
 

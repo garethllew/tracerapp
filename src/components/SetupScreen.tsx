@@ -21,8 +21,8 @@ export function SetupScreen() {
       <p className="label">One-time setup</p>
       <h1>Download the detection model</h1>
       <p className="body">
-        Tracer checks text with a local AI model ({info ? mb(info.sizeBytes) : "about 850 MB"}). It downloads
-        once from GitHub, is checked against a fingerprint, and from then on Tracer works fully offline.
+        Tracer checks text with two local AI models ({info ? mb(info.sizeBytes) : "about 1.2 GB"}). They download
+        once from GitHub, are checked against fingerprints, and from then on Tracer works fully offline.
         Your text never leaves this computer.
       </p>
 
@@ -51,7 +51,7 @@ export function SetupScreen() {
       </div>
 
       <p className="fine mono">
-        {info?.name ?? "desklib/ai-text-detector-v1.01"} · {info?.version ?? "model-v1"} · MIT licence.
+        {info?.name ?? "desklib + rasbt detectors"} · {info?.version ?? "model-v1 + model-v2"} · MIT and Apache-2.0 licences.
         If the download stops, Retry picks up where it left off.
       </p>
     </div>

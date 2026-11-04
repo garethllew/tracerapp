@@ -2,7 +2,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::time::Instant;
 
 use tauri::{AppHandle, Runtime, State};
-use tracer_engine::{analyze, Analysis, EngineConfig};
+use tracer_engine::{Analysis, EngineConfig};
 
 use crate::engine::{self, EngineState, EngineStatus, SharedEngine};
 use crate::hotkey::{self, HotkeyState};
@@ -25,7 +25,7 @@ pub async fn analyze_text<R: Runtime>(app: AppHandle<R>, text: String, state: St
         let detector = engine::acquire(&app, &state)?;
         let t = Instant::now();
         let words = text.split_whitespace().count();
-        let out = catch_unwind(AssertUnwindSafe(|| analyze(&text, detector.as_ref(), &EngineConfig::default())));
+        let out = catch_unwind(AssertUnwindSafe(|| detector.analyze(&text, &EngineConfig::default())));
         drop(detector);
         engine::touch(&state); // the hold counts from the end of this check
         match out {

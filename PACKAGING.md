@@ -52,7 +52,7 @@ The exe also needs the Microsoft Visual C++ runtime (`MSVCP140.dll`, `MSVCP140_1
 
 ### The detection model is not in the installer
 
-The ~850 MB model is downloaded on first run from the `model-v1` GitHub release, checked against pinned SHA-256s, and stored in `%APPDATA%\com.tracer.app\models`. Installers stay small, and the user needs internet for that first run only.
+The models (~1.2 GB: desklib from the `model-v1` GitHub release, rasbt from `model-v2`) are downloaded on first run, checked against pinned SHA-256s, and stored in `%APPDATA%\com.tracer.app\models`. Installers stay small, and the user needs internet for that first run only.
 
 ---
 
@@ -139,19 +139,18 @@ The manifests use schema `ManifestVersion` 1.28.0 (the latest in `microsoft/wing
 
 ## Publishing a new model
 
-The app only knows the model by the pinned names, sizes and SHA-256s in `src-tauri/src/download.rs`. To ship a new model:
+The app only knows the models by the pinned names, release tags, sizes and SHA-256s in `src-tauri/src/download.rs` (`FILES`: desklib in `model-v1`, rasbt in `model-v2`). To ship a new model:
 
-1. Re-run the export in `tools/model-export` to produce the new `tracer-int8.onnx` and `tokenizer.json`.
-2. Create a GitHub release named **`model-vN`** (for example `model-v2`) and upload both files as assets. Keep old model releases up: older installed app versions still point at them.
+1. Re-run the export in `tools/model-export` to produce the new model and tokenizer files.
+2. Create a GitHub release named **`model-vN`** (the next unused number) and upload the changed files as assets. Keep old model releases up: older installed app versions still point at them.
 3. Compute size and SHA-256 for each file:
    ```powershell
    (Get-Item tracer-int8.onnx).Length
    (Get-FileHash tracer-int8.onnx -Algorithm SHA256).Hash.ToLower()
    ```
 4. In `src-tauri/src/download.rs` update:
-   - `MODEL_VERSION` (`"model-vN"`)
-   - `BASE_URL` (the `.../releases/download/model-vN` path)
-   - the `size` and `sha256` of each entry in `FILES`
+   - `MODEL_VERSION` (shown in Settings)
+   - the `release`, `size` and `sha256` of each changed entry in `FILES`
 5. Run `cargo test -p tracer --lib`, then do a real first-run download on a machine with no model to confirm it verifies.
 6. Mention the model change in the app release notes, and release the app as above.
 
