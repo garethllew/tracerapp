@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+# src-tauri joins in Phase 2.
+members = ["crates/tracer-engine"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/garethllew/tracerapp"
+
+# Inference is the hot path: keep the engine optimised even in dev builds so
+# `tauri dev` and `cargo test` feel like the real thing.
+[profile.dev.package.tracer-engine]
+opt-level = 3

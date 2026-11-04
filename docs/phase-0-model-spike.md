@@ -84,10 +84,8 @@ separate doc pass when the text fits in about one window. I expect ~1.2–1.5 s 
 
 ## 6. Recommendation and decisions for you
 
-1. **Model format:** I recommend **INT8 (tuned recipe)**. It's half the download, roughly 2× faster and uses 1.2 GB less RAM, with no label changes on the sample set.
-2. **Where the ONNX lives (needs your call).** desklib publishes only PyTorch weights, so "download from Hugging Face" means hosting *our* export. Options:
-   - **(Recommended)** a Hugging Face model repo under your account, e.g. `garethllew/tracer-detector-onnx`, with MIT notices and a pinned revision. Free, no bandwidth caps, resumable downloads.
-   - A GitHub Release asset on `tracerapp`, under the 2 GB per-file limit. Simpler, but it ties model updates to app releases.
+1. **Model format. Decided: INT8 (tuned recipe).** It's half the download, roughly 2× faster and uses 1.2 GB less RAM, with no label changes on the sample set.
+2. **Where the ONNX lives. Decided: GitHub.** desklib publishes only PyTorch weights, so we host our own export as release assets on `garethllew/tracerapp` under a dedicated model tag (e.g. `model-v1`, 838 MB, under GitHub's 2 GB per-file limit). The separate tag keeps model updates independent of app releases. The app pins each file's URL and SHA-256.
 3. **RAM (proposal, Phase 3).** Keep the model warm while the window is open and for ~10 minutes after the last check, then unload. Reloading takes ~1 s, so the hotkey still feels instant most of the time, and the app doesn't hold 1.5 GB in the tray all day. The alternative is to always keep it warm, as the brief says. Your choice.
 4. No reason to look at an alternative model. A smaller DeBERTa/RoBERTa-base detector (~150–250 MB) is the fallback if 838 MB or 1.5 GB RAM proves unacceptable.
 

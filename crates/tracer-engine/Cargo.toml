@@ -1,0 +1,23 @@
+[package]
+name = "tracer-engine"
+description = "Tracer's local AI-text detection engine: segmentation, windowing, ONNX scoring and aggregation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+default-run = "eval"
+
+[[bin]]
+name = "eval"
+path = "src/bin/eval.rs"
+
+[dependencies]
+# ONNX Runtime. download-binaries fetches pyke's prebuilt runtime at BUILD
+# time and links it into the binary; the app itself makes no network calls.
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "download-binaries", "copy-dylibs", "tls-native", "api-31"] }
+# Pure-Rust regex backend instead of the default Oniguruma C build.
+tokenizers = { version = "0.23", default-features = false, features = ["fancy-regex"] }
+unicode-segmentation = "1.13"
+whatlang = "0.18"
+serde = { version = "1", features = ["derive"] }
+anyhow = "1"
