@@ -5,7 +5,7 @@
 //!   cargo run --release --bin eval -- --bench          # 500-word latency
 //!   cargo run --release --bin eval -- --raw            # whole-sample P(AI), for parity with Python
 //!
-//! Options: --samples DIR  --model-dir DIR  --model FILE (default tracer-int8.onnx)
+//! Options: --samples DIR  --model-dir DIR  --model ensemble|FILE (default ensemble = desklib + rasbt, max)
 //!          --threads N  --overlap N  --no-doc
 //!          --batch N  --budget TOKENS   (batching changes INT8 scores; see DetectorOptions)
 //!
@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use anyhow::{bail, Context, Result};
-use tracer_engine::{analyze, Analysis, Detector, DetectorOptions, EngineConfig, Gate, OnnxDetector, PieceKind};
+use tracer_engine::{analyze, models, Analysis, Detector, DetectorOptions, EngineConfig, Gate, OnnxDetector, PieceKind};
 
 const ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
 
@@ -38,7 +38,7 @@ fn parse_args() -> Result<Args> {
     let mut a = Args {
         samples: Path::new(ROOT).join("eval/samples"),
         model_dir: default_model_dir(),
-        model: "tracer-int8.onnx".into(),
+        model: "ensemble".into(),
         threads: None,
         batch: DetectorOptions::default().batch_size,
         overlap: None,
@@ -79,7 +79,7 @@ fn default_model_dir() -> PathBuf {
     }
     if let Ok(appdata) = std::env::var("APPDATA") {
         let d = Path::new(&appdata).join("com.tracer.app").join("models");
-        if d.join("tracer-int8.onnx").exists() {
+        if models::complete(&d) {
             return d;
         }
     }
@@ -142,17 +142,26 @@ fn main() -> Result<()> {
     if args.no_doc {
         cfg.doc_check_max_words = 0;
     }
-    let model = args.model_dir.join(&args.model);
-    let tokenizer = args.model_dir.join("tokenizer.json");
-    if !model.exists() {
-        bail!("model not found at {} (run tools/model-export, or pass --model-dir)", model.display());
-    }
     let mut opts = DetectorOptions { intra_threads: args.threads, batch_size: args.batch, ..Default::default() };
     if let Some(b) = args.budget {
         opts.max_batch_tokens = b;
     }
     let t = Instant::now();
-    let det = OnnxDetector::load(&model, &tokenizer, &opts)?;
+    let det: Box<dyn Detector> = if args.model == "ensemble" {
+        if !models::complete(&args.model_dir) {
+            bail!("model set incomplete in {} (need {:?}; run tools/model-export, or pass --model-dir)", args.model_dir.display(), models::ALL_FILES);
+        }
+        Box::new(models::load_ensemble(&args.model_dir, &opts)?)
+    } else {
+        // A single model, e.g. --model tracer-int8.onnx or --model rasbt-bf16w.onnx.
+        let model = args.model_dir.join(&args.model);
+        let tok = if args.model.starts_with("rasbt") { models::STYLE_TOKENIZER } else { models::DESKLIB_TOKENIZER };
+        if !model.exists() {
+            bail!("model not found at {}", model.display());
+        }
+        Box::new(OnnxDetector::load(&model, &args.model_dir.join(tok), &opts)?)
+    };
+    let det = det.as_ref();
     let threads = args.threads.unwrap_or_else(tracer_engine::detector::default_threads);
     println!("model {} | {} threads | batch {} | loaded in {:.2}s\n", args.model, threads, args.batch, t.elapsed().as_secs_f32());
 
@@ -169,14 +178,14 @@ fn main() -> Result<()> {
         return Ok(());
     }
     if args.bench {
-        return bench(&det, &samples, &cfg);
+        return bench(det, &samples, &cfg);
     }
 
     println!("{:<34} {:>6} {:>4} {:>5} {:>8} {:>5} {:>5} {:>6} {:>7}  result", "sample", "exp", "exp%", "words", "gate", "AI%", "doc", "conf", "ms");
     let (mut ok_clear, mut n_clear, mut mixed_err, mut n_mixed, mut gated) = (0, 0, 0f32, 0, 0);
     for s in &samples {
         let t = Instant::now();
-        let a = analyze(&s.body, &det, &cfg)?;
+        let a = analyze(&s.body, det, &cfg)?;
         let ms = t.elapsed().as_secs_f32() * 1000.0;
         let verdict = verdict(s, &a);
         match (&a.gate, s.expected.as_str()) {

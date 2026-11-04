@@ -51,7 +51,10 @@ pub struct EngineConfig {
     // ---- classification + confidence
     /// A sentence counts as AI when its P(AI) is at or above this.
     pub ai_threshold: f32,
-    /// Scores inside this band are "undecided".
+    /// Scores inside this band are "undecided" for confidence. Wide on
+    /// purpose: a Gemini brand-voice text scored 0.22-0.32 throughout and was
+    /// reported "High confidence human" while the 0.35-0.65 band treated
+    /// 0.3 as decisive. Only clear scores should earn High.
     pub ambiguous_low: f32,
     pub ambiguous_high: f32,
     /// Share of words in undecided sentences that drops confidence one /
@@ -89,8 +92,8 @@ impl Default for EngineConfig {
             disagreement_low_share: 0.1,
             disagreement_high_share: 0.5,
             ai_threshold: 0.5,
-            ambiguous_low: 0.35,
-            ambiguous_high: 0.65,
+            ambiguous_low: 0.15,
+            ambiguous_high: 0.85,
             ambiguous_share_medium: 0.25,
             ambiguous_share_low: 0.5,
             confidence_medium_words: 50,
