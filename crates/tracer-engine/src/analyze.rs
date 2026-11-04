@@ -8,8 +8,9 @@ use serde::Serialize;
 
 use crate::config::EngineConfig;
 use crate::detector::Detector;
-use crate::text::{paragraph_ids, segment, PieceKind};
-use crate::window::{build_doc_chunks, build_grouped_windows, build_groups};
+use crate::tells::{self, Tell};
+use crate::text::{paragraph_ids, segment, span_text, PieceKind};
+use crate::window::{build_doc_chunks, build_group_chunks, build_grouped_windows, build_groups};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -46,7 +47,8 @@ pub struct Segment {
     pub text: String,
     pub kind: PieceKind,
     pub words: usize,
-    /// Prose that was scored: the mean P(AI) of the windows containing it.
+    /// Prose that was scored: the mean P(AI) of the windows containing it,
+    /// after the context gate and style lift (see `analyze_with`).
     pub p_ai: Option<f32>,
 }
 
@@ -74,9 +76,27 @@ pub struct Analysis {
     /// Model calls' worth of chunks (windows + doc chunks, deduplicated).
     pub chunks_scored: usize,
     pub segments: Vec<Segment>,
+    /// AI-writing tells found (tells.rs), strongest first: shown as reasons.
+    /// Only `artefact` ones affect the score.
+    pub tells: Vec<Tell>,
 }
 
+/// Analyse with one detector (desklib).
 pub fn analyze(text: &str, detector: &dyn Detector, cfg: &EngineConfig) -> Result<Analysis> {
+    analyze_with(text, detector, None, cfg)
+}
+
+/// Analyse with the main detector (desklib) and, optionally, a style
+/// detector (rasbt). A sentence's score is the mean of its desklib windows,
+/// then:
+///   1. context gate: capped at desklib's score for its doc chunk when that
+///      is below `context_gate` (the window reads AI, the passage doesn't);
+///   2. style lift: raised to the style detector's score for its paragraph
+///      when that is at least `style_lift_threshold`, or for its doc chunk
+///      when that is at least `style_doc_lift_threshold`.
+/// So a sentence reads AI when desklib says so in context, or rasbt is
+/// confident about its paragraph or the whole passage.
+pub fn analyze_with(text: &str, detector: &dyn Detector, style: Option<&dyn Detector>, cfg: &EngineConfig) -> Result<Analysis> {
     let pieces = segment(text, cfg);
     let prose: Vec<usize> = pieces.iter().enumerate().filter(|(_, p)| p.kind == PieceKind::Prose).map(|(i, _)| i).collect();
     let words: usize = prose.iter().map(|&i| pieces[i].words).sum();
@@ -95,6 +115,7 @@ pub fn analyze(text: &str, detector: &dyn Detector, cfg: &EngineConfig) -> Resul
         truncated: false,
         chunks_scored: 0,
         segments: Vec::new(),
+        tells: tells::find(text, cfg.artefact_min_weight),
     };
     let mut p_ai: Vec<Option<f32>> = vec![None; pieces.len()];
 
@@ -120,7 +141,9 @@ pub fn analyze(text: &str, detector: &dyn Detector, cfg: &EngineConfig) -> Resul
         let sp: Vec<usize> = scored.iter().map(|&i| para_of[i]).collect();
         let groups = build_groups(&sw, &sp, cfg);
         let windows = build_grouped_windows(&sw, &groups, cfg);
-        let doc_chunks = if acc <= cfg.doc_check_max_words { build_doc_chunks(&sw, cfg) } else { Vec::new() };
+        let gate = cfg.context_gate > 0.0;
+        let doc_chunks = if gate || style.is_some() || acc <= cfg.doc_check_max_words { build_doc_chunks(&sw, cfg) } else { Vec::new() };
+        let join = |r: &Range<usize>| span_text(text, &pieces, &scored[r.clone()]);
 
         // Score every distinct sentence range once (a short text's single
         // window doubles as its whole-document chunk).
@@ -128,15 +151,11 @@ pub fn analyze(text: &str, detector: &dyn Detector, cfg: &EngineConfig) -> Resul
         let mut texts: Vec<String> = Vec::new();
         for r in windows.iter().chain(doc_chunks.iter()) {
             index.entry(r.clone()).or_insert_with(|| {
-                texts.push(scored[r.clone()].iter().map(|&i| pieces[i].model_text.as_str()).collect::<Vec<_>>().join(" "));
+                texts.push(join(r));
                 texts.len() - 1
             });
         }
-        let probs = detector.score(&texts)?;
-        if probs.len() != texts.len() {
-            bail!("detector returned {} scores for {} chunks", probs.len(), texts.len());
-        }
-        let probs: Vec<f32> = probs.into_iter().map(|p| if p.is_finite() { p.clamp(0.0, 1.0) } else { 0.5 }).collect();
+        let probs = score_checked(detector, &texts)?;
         a.chunks_scored = texts.len();
 
         // Sentence score = mean of the windows containing it.
@@ -149,15 +168,81 @@ pub fn analyze(text: &str, detector: &dyn Detector, cfg: &EngineConfig) -> Resul
                 cnt[s] += 1;
             }
         }
-        let sent_p: Vec<f32> = sum.iter().zip(&cnt).map(|(s, &c)| if c > 0 { s / c as f32 } else { 0.5 }).collect();
+        let window_p: Vec<f32> = sum.iter().zip(&cnt).map(|(s, &c)| if c > 0 { s / c as f32 } else { 0.5 }).collect();
+        let mut sent_p = window_p.clone();
+
+        if gate {
+            for r in &doc_chunks {
+                let c = probs[index[r]];
+                if c < cfg.context_gate {
+                    sent_p[r.clone()].iter_mut().for_each(|p| *p = p.min(c));
+                }
+            }
+        }
+        if let Some(style) = style {
+            // Paragraph chunks and doc chunks, each distinct range scored once
+            // (a one-paragraph text's paragraph is its doc chunk).
+            let lifts: Vec<(Range<usize>, f32)> = build_group_chunks(&sw, &groups, cfg)
+                .into_iter()
+                .map(|r| (r, cfg.style_lift_threshold))
+                .chain(doc_chunks.iter().map(|r| (r.clone(), cfg.style_doc_lift_threshold)))
+                .collect();
+            let mut sidx: HashMap<Range<usize>, usize> = HashMap::new();
+            let mut stexts: Vec<String> = Vec::new();
+            for (r, _) in &lifts {
+                sidx.entry(r.clone()).or_insert_with(|| {
+                    stexts.push(join(r));
+                    stexts.len() - 1
+                });
+            }
+            let ps = score_checked(style, &stexts)?;
+            for (r, t) in &lifts {
+                let p = ps[sidx[r]];
+                if p >= *t {
+                    sent_p[r.clone()].iter_mut().for_each(|s| *s = s.max(p));
+                }
+            }
+            a.chunks_scored += stexts.len();
+        }
+
+        // Copy-paste artefact (tells.rs): the paragraph group it sits in reads
+        // AI. Near-certain evidence, so those sentences aren't "undecided".
+        let mut artefact_lifted = vec![false; n_scored];
+        if cfg.artefact_lift_score > 0.0 {
+            let last_end = pieces[scored[n_scored - 1]].range.end;
+            for t in a.tells.iter().filter(|t| t.artefact) {
+                for span in &t.spans {
+                    if a.truncated && span.start >= last_end {
+                        continue; // beyond the scored text
+                    }
+                    let pi = pieces.partition_point(|p| p.range.end <= span.start).min(pieces.len() - 1);
+                    let mut ks: Vec<usize> = (0..n_scored).filter(|&k| para_of[scored[k]] == para_of[pi]).collect();
+                    if ks.is_empty() {
+                        // e.g. a URL on its own line: the nearest scored sentence.
+                        ks = (0..n_scored).min_by_key(|&k| scored[k].abs_diff(pi)).into_iter().collect();
+                    }
+                    for g in groups.iter().filter(|g| ks.iter().any(|k| g.contains(k))) {
+                        for k in g.clone() {
+                            sent_p[k] = sent_p[k].max(cfg.artefact_lift_score);
+                            artefact_lifted[k] = true;
+                        }
+                    }
+                }
+            }
+        }
 
         let total = a.scored_words.max(1) as f32;
         let ai_words: usize = sent_p.iter().zip(&sw).filter(|(p, _)| **p >= cfg.ai_threshold).map(|(_, w)| w).sum();
-        let ambiguous_words: usize = sent_p
-            .iter()
-            .zip(&sw)
-            .filter(|(p, _)| **p >= cfg.ambiguous_low && **p <= cfg.ambiguous_high)
-            .map(|(_, w)| w)
+        // Undecided: the windows' or the final score is in the ambiguous
+        // band, or the gate / lift flipped the verdict. The windows and the
+        // wider context disagree there, so a capped or lifted score mustn't
+        // read as a confident one (a capped 0.002 isn't "clearly human" when
+        // its windows said 0.29).
+        let is_ai = |p: f32| p >= cfg.ai_threshold;
+        let in_band = |p: f32| p >= cfg.ambiguous_low && p <= cfg.ambiguous_high;
+        let ambiguous_words: usize = (0..n_scored)
+            .filter(|&k| !artefact_lifted[k] && (in_band(sent_p[k]) || in_band(window_p[k]) || is_ai(sent_p[k]) != is_ai(window_p[k])))
+            .map(|k| sw[k])
             .sum();
         let ai_share = ai_words as f32 / total;
         let doc_score = (!doc_chunks.is_empty()).then(|| {
@@ -171,6 +256,14 @@ pub fn analyze(text: &str, detector: &dyn Detector, cfg: &EngineConfig) -> Resul
         a.confidence = Some(confidence(a.scored_words, ambiguous_words as f32 / total, a.disagreement, non_english, cfg));
         a.ai_share = Some(ai_share);
         a.doc_score = doc_score;
+        let mut para_words: Vec<usize> = Vec::new();
+        for k in 0..n_scored {
+            match para_words.last_mut() {
+                Some(w) if k > 0 && sp[k] == sp[k - 1] => *w += sw[k],
+                _ => para_words.push(sw[k]),
+            }
+        }
+        a.tells.extend(tells::signals(&sw, &para_words, text));
         for (k, &i) in scored.iter().enumerate() {
             p_ai[i] = Some(sent_p[k]);
         }
@@ -182,6 +275,15 @@ pub fn analyze(text: &str, detector: &dyn Detector, cfg: &EngineConfig) -> Resul
         .map(|(p, s)| Segment { text: text[p.range.clone()].to_string(), kind: p.kind, words: p.words, p_ai: s })
         .collect();
     Ok(a)
+}
+
+/// Score chunks, check the count, and neutralise non-finite scores.
+fn score_checked(detector: &dyn Detector, texts: &[String]) -> Result<Vec<f32>> {
+    let probs = detector.score(texts)?;
+    if probs.len() != texts.len() {
+        bail!("detector returned {} scores for {} chunks", probs.len(), texts.len());
+    }
+    Ok(probs.into_iter().map(|p| if p.is_finite() { p.clamp(0.0, 1.0) } else { 0.5 }).collect())
 }
 
 fn confidence(words: usize, ambiguous_share: f32, disagreement: bool, non_english: bool, cfg: &EngineConfig) -> Confidence {
@@ -255,6 +357,13 @@ mod tests {
         EngineConfig::default()
     }
 
+    /// Context gate off: for tests of the window aggregation itself, where the
+    /// mock's whole-text score (share of AI markers) would cap a minority of
+    /// AI sentences.
+    fn no_gate() -> EngineConfig {
+        EngineConfig { context_gate: 0.0, ..EngineConfig::default() }
+    }
+
     const HUMAN: &str = "lol ok so the build broke again and nobody knows why tbh";
     const AI: &str = "We will leverage synergies to drive impactful outcomes across the organisation";
 
@@ -306,7 +415,7 @@ mod tests {
     fn mixed_split_is_word_weighted_and_localised() {
         // 6 human sentences, then 6 AI sentences, then 6 human.
         let t = format!("{}\n\n{}\n\n{}", para(HUMAN, 6), para(AI, 6), para(HUMAN, 6));
-        let a = analyze(&t, &Mock, &cfg()).unwrap();
+        let a = analyze(&t, &Mock, &no_gate()).unwrap();
         assert_eq!(rebuilt(&a), t);
         let share = a.ai_share.unwrap();
         assert!((share - 0.33).abs() < 0.12, "share {share}");
@@ -322,7 +431,7 @@ mod tests {
         // 9 x 15-word sentences -> windows 0..3, 2..5, 4..7, 6..9.
         let s = |tag: &str| format!("{tag} {}.", vec!["filler"; 14].join(" "));
         let t: Vec<String> = (0..9).map(|i| if i < 3 { s("leverage") } else { s("lol") }).collect();
-        let a = analyze(&t.join(" "), &Mock, &cfg()).unwrap();
+        let a = analyze(&t.join(" "), &Mock, &no_gate()).unwrap();
         let ps: Vec<f32> = a.segments.iter().filter_map(|s| s.p_ai).collect();
         // window 0..3 = 1.0, window 2..5 = 1/3; sentence 2 is in both.
         assert!((ps[0] - 1.0).abs() < 1e-6);
@@ -338,14 +447,211 @@ mod tests {
 
     #[test]
     fn doc_check_only_up_to_its_word_limit() {
-        let short = analyze(&para(AI, 90), &Mock, &cfg()).unwrap(); // 990 words
+        let short = analyze(&para(AI, 90), &Mock, &no_gate()).unwrap(); // 990 words
         assert!(short.doc_score.is_some());
-        let long = analyze(&para(AI, 92), &Mock, &cfg()).unwrap(); // 1012 words
+        let long = analyze(&para(AI, 92), &Mock, &no_gate()).unwrap(); // 1012 words
         assert!(long.doc_score.is_none());
         assert!(!long.disagreement);
-        let mut off = cfg();
+        let mut off = no_gate();
         off.doc_check_max_words = 0;
         assert!(analyze(&para(AI, 20), &Mock, &off).unwrap().doc_score.is_none());
+        // The context gate needs the doc chunks, so with it on they're scored at any length.
+        assert!(analyze(&para(AI, 92), &Mock, &cfg()).unwrap().doc_score.is_some());
+    }
+
+    // ---- combining evidence: context gate + style lift
+
+    /// Windows (short chunks) read AI, longer passages (> 100 words) human:
+    /// desklib on the Enron emails.
+    struct WindowsOnly;
+    impl Detector for WindowsOnly {
+        fn score(&self, chunks: &[String]) -> Result<Vec<f32>> {
+            Ok(chunks.iter().map(|c| if c.split_whitespace().count() > 100 { 0.1 } else { 0.9 }).collect())
+        }
+    }
+
+    /// Scores chunks by a marker (only when no human marker is mixed in) and
+    /// records what it was asked to score.
+    struct Style {
+        score: f32,
+        seen: std::sync::Mutex<Vec<String>>,
+    }
+    impl Style {
+        fn new(score: f32) -> Self {
+            Self { score, seen: Default::default() }
+        }
+    }
+    impl Detector for Style {
+        fn score(&self, chunks: &[String]) -> Result<Vec<f32>> {
+            self.seen.lock().unwrap().extend(chunks.iter().cloned());
+            Ok(chunks.iter().map(|c| if c.contains("leverage") && !c.contains("lol") { self.score } else { 0.02 }).collect())
+        }
+    }
+
+    #[test]
+    fn gate_needs_the_passage_to_agree_with_the_windows() {
+        let t = para(HUMAN, 20); // 240 words, one doc chunk
+        let gated = analyze(&t, &WindowsOnly, &cfg()).unwrap();
+        assert_eq!(gated.ai_share, Some(0.0));
+        assert_eq!(gated.doc_score, Some(0.1));
+        // Capped at the passage score, not zeroed: the highlight stays honest.
+        assert!(gated.segments.iter().filter_map(|s| s.p_ai).all(|p| (p - 0.1).abs() < 1e-6));
+        // 0.1 looks decisive, but windows and passage disagreed: not confident.
+        assert_eq!(gated.confidence, Some(Confidence::Low));
+        assert_eq!(analyze(&t, &WindowsOnly, &no_gate()).unwrap().ai_share, Some(1.0));
+    }
+
+    #[test]
+    fn gate_passes_when_the_passage_reads_ai() {
+        assert_eq!(analyze(&para(HUMAN, 20), &Constant(0.9), &cfg()).unwrap().ai_share, Some(1.0));
+        // At the threshold counts as agreeing.
+        let mut c = cfg();
+        c.context_gate = 0.9;
+        assert_eq!(analyze(&para(HUMAN, 20), &Constant(0.9), &c).unwrap().ai_share, Some(1.0));
+    }
+
+    #[test]
+    fn gate_is_local_to_each_doc_chunk() {
+        // Windows always read AI; a doc chunk reads AI only if it has the AI marker.
+        struct ChunkByMarker;
+        impl Detector for ChunkByMarker {
+            fn score(&self, chunks: &[String]) -> Result<Vec<f32>> {
+                Ok(chunks
+                    .iter()
+                    .map(|c| if c.split_whitespace().count() <= 100 || c.contains("leverage") { 0.9 } else { 0.1 })
+                    .collect())
+            }
+        }
+        // 25 AI sentences (275 words) then 25 human (300): doc chunks are
+        // AI + 2 human sentences (299 words) | 23 human sentences (276 words).
+        let t = format!("{}\n\n{}", para(AI, 25), para(HUMAN, 25));
+        let a = analyze(&t, &ChunkByMarker, &cfg()).unwrap();
+        assert_eq!(a.scored_words, 575);
+        let share = a.ai_share.unwrap();
+        assert!((share - 299.0 / 575.0).abs() < 1e-6, "share {share}");
+    }
+
+    #[test]
+    fn style_lift_rescues_a_paragraph_it_is_sure_of() {
+        // desklib reads everything human; rasbt is sure about the middle paragraph.
+        let t = format!("{}\n\n{}\n\n{}", para(HUMAN, 6), para(AI, 6), para(HUMAN, 6));
+        let style = Style::new(0.97);
+        let a = analyze_with(&t, &Constant(0.1), Some(&style), &cfg()).unwrap();
+        let ps: Vec<f32> = a.segments.iter().filter_map(|s| s.p_ai).collect();
+        assert_eq!(ps.len(), 18);
+        assert!(ps[..6].iter().chain(&ps[12..]).all(|&p| (p - 0.1).abs() < 1e-6), "{ps:?}");
+        assert!(ps[6..12].iter().all(|&p| (p - 0.97).abs() < 1e-6), "{ps:?}");
+        let share = a.ai_share.unwrap();
+        assert!((share - 66.0 / 210.0).abs() < 1e-6, "share {share}");
+        // The lifted third disagreed with desklib: one level down from High.
+        assert_eq!(a.confidence, Some(Confidence::Medium));
+        // rasbt scores whole paragraphs and the doc chunk, never windows.
+        assert_eq!(style.seen.lock().unwrap().len(), 4);
+        assert!(style.seen.lock().unwrap().iter().all(|c| c.split_whitespace().count() >= 66));
+    }
+
+    #[test]
+    fn style_lift_overrides_the_gate() {
+        // Windows AI, passage human (gated) — but rasbt is sure about the text.
+        let a = analyze_with(&para(AI, 20), &WindowsOnly, Some(&Style::new(0.99)), &cfg()).unwrap();
+        assert_eq!(a.ai_share, Some(1.0));
+    }
+
+    #[test]
+    fn style_below_threshold_changes_nothing() {
+        let t = format!("{}\n\n{}", para(HUMAN, 8), para(AI, 8));
+        let alone = analyze(&t, &Mock, &cfg()).unwrap();
+        for score in [0.5, 0.94] {
+            let with = analyze_with(&t, &Mock, Some(&Style::new(score)), &cfg()).unwrap();
+            assert_eq!(with.ai_share, alone.ai_share);
+            let p = |a: &Analysis| a.segments.iter().map(|s| s.p_ai).collect::<Vec<_>>();
+            assert_eq!(p(&with), p(&alone));
+        }
+        let mut strict = cfg();
+        strict.style_lift_threshold = 0.98;
+        strict.style_doc_lift_threshold = 0.98;
+        let a = analyze_with(&para(AI, 20), &Constant(0.1), Some(&Style::new(0.97)), &strict).unwrap();
+        assert_eq!(a.ai_share, Some(0.0));
+        // The paragraph is also the doc chunk: 0.97 clears the default 0.8 doc lift.
+        let a = analyze_with(&para(AI, 20), &Constant(0.1), Some(&Style::new(0.97)), &cfg()).unwrap();
+        assert_eq!(a.ai_share, Some(1.0));
+    }
+
+    #[test]
+    fn style_doc_lift_catches_a_text_whose_paragraphs_read_human() {
+        // rasbt on a pasted chatbot answer: each paragraph human, the whole
+        // (with its blank lines kept) AI.
+        struct WholeOnly;
+        impl Detector for WholeOnly {
+            fn score(&self, chunks: &[String]) -> Result<Vec<f32>> {
+                Ok(chunks.iter().map(|c| if c.contains("\n\n") { 0.97 } else { 0.01 }).collect())
+            }
+        }
+        let t = format!("{}\n\n{}\n\n{}", para(HUMAN, 6), para(HUMAN, 6), para(HUMAN, 6));
+        let a = analyze_with(&t, &Constant(0.1), Some(&WholeOnly), &cfg()).unwrap();
+        assert_eq!(a.ai_share, Some(1.0));
+        // desklib read every window human, so this is a contested call, not a confident one.
+        assert_eq!(a.confidence, Some(Confidence::Low));
+        let mut strict = cfg();
+        strict.style_doc_lift_threshold = 0.98;
+        assert_eq!(analyze_with(&t, &Constant(0.1), Some(&WholeOnly), &strict).unwrap().ai_share, Some(0.0));
+    }
+
+    #[test]
+    fn capping_does_not_make_undecided_windows_look_decisive() {
+        // Windows 0.3 (undecided), passage 0.002: capped to 0.002 but still undecided.
+        struct Mild;
+        impl Detector for Mild {
+            fn score(&self, chunks: &[String]) -> Result<Vec<f32>> {
+                Ok(chunks.iter().map(|c| if c.split_whitespace().count() > 100 { 0.002 } else { 0.3 }).collect())
+            }
+        }
+        let a = analyze(&para(HUMAN, 20), &Mild, &cfg()).unwrap();
+        assert_eq!(a.ai_share, Some(0.0));
+        assert_eq!(a.confidence, Some(Confidence::Low));
+    }
+
+    // ---- AI-writing tells (hybrid: shown always, only artefacts score)
+
+    #[test]
+    fn artefact_lifts_only_its_paragraph() {
+        // Human body, then a paragraph with a template placeholder left in.
+        let t = format!("{}\n\n{}\n\n{} Best, [Your Name].", para(HUMAN, 6), para(HUMAN, 6), para(HUMAN, 5));
+        let a = analyze(&t, &Constant(0.05), &cfg()).unwrap();
+        assert!(a.tells.iter().any(|t| t.id == "placeholder" && t.artefact));
+        let ps: Vec<f32> = a.segments.iter().filter_map(|s| s.p_ai).collect();
+        assert!(ps[..12].iter().all(|&p| p < 0.1), "{ps:?}");
+        assert!(ps[12..].iter().all(|&p| (p - 0.95).abs() < 1e-6), "{ps:?}");
+        let share = a.ai_share.unwrap();
+        assert!(share > 0.2 && share < 0.4, "share {share}");
+        // Near-certain evidence: the lifted paragraph doesn't count as undecided.
+        assert_eq!(a.confidence, Some(Confidence::High));
+        // Weight 6 = no tell may score.
+        let off = EngineConfig { artefact_min_weight: 6, ..cfg() };
+        assert_eq!(analyze(&t, &Constant(0.05), &off).unwrap().ai_share, Some(0.0));
+    }
+
+    #[test]
+    fn style_tells_are_shown_but_never_score() {
+        let t = format!("{} It’s fast — really fast. Additionally, it’s robust. Moreover, it’s seamless and crucial.", para(HUMAN, 10));
+        let a = analyze(&t, &Constant(0.05), &cfg()).unwrap();
+        assert!(a.tells.iter().any(|t| t.id == "em-dash"));
+        assert!(a.tells.iter().all(|t| !t.artefact));
+        assert_eq!(a.ai_share, Some(0.0));
+    }
+
+    #[test]
+    fn tells_are_reported_even_when_too_short_to_score() {
+        let a = analyze("As an AI language model, I can't.", &Constant(0.9), &cfg()).unwrap();
+        assert_eq!(a.gate, Gate::TooShort);
+        assert!(a.tells.iter().any(|t| t.id == "ai-self-reference"));
+    }
+
+    #[test]
+    fn style_wrong_length_is_an_error() {
+        // Two paragraphs, one score back.
+        let t = format!("{}\n\n{}", para(HUMAN, 10), para(HUMAN, 10));
+        assert!(analyze_with(&t, &Mock, Some(&WrongLength), &cfg()).is_err());
     }
 
     #[test]

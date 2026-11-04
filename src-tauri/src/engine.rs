@@ -2,7 +2,9 @@
 //!
 //! User decision (2026-11-04): don't load the model at startup. Load it on the
 //! first check, keep it for `HOLD` after the most recent check, then unload it
-//! (~1.5 GB freed) and load again on the next check (~1–3 s). The engine states:
+//! (~2 GB freed) and load again on the next check (~2–4 s). "The model" is the
+//! pair desklib + rasbt (`tracer_engine::models`, docs/detector-ensemble.md);
+//! it counts as installed only when all four files are there. The engine states:
 //!
 //! ```text
 //!   Missing ──download──► Idle ──check──► Loading ──► Ready ──HOLD idle──► Idle
@@ -16,10 +18,8 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
-use tracer_engine::{DetectorOptions, OnnxDetector};
-
-pub const MODEL_FILE: &str = "tracer-int8.onnx";
-pub const TOKENIZER_FILE: &str = "tokenizer.json";
+use tracer_engine::models::{self, Ensemble};
+use tracer_engine::DetectorOptions;
 
 /// How long the model stays in memory after the last check.
 pub const HOLD: Duration = Duration::from_secs(60);
@@ -30,7 +30,7 @@ pub enum EngineState {
     /// Model files are installed but not in memory.
     Idle { model_dir: PathBuf },
     Loading { model_dir: PathBuf },
-    Ready { detector: Arc<OnnxDetector>, model_dir: PathBuf, last_used: Instant },
+    Ready { detector: Arc<Ensemble>, model_dir: PathBuf, last_used: Instant },
     Missing { searched: Vec<String> },
     Error(String),
 }
@@ -68,7 +68,7 @@ impl EngineState {
             EngineState::Ready { model_dir, .. } => EngineStatus { state: StatusKind::Ready, message: None, model_dir: dir(model_dir) },
             EngineState::Missing { searched } => EngineStatus {
                 state: StatusKind::Missing,
-                message: Some(format!("Model file {MODEL_FILE} not found. Searched: {}", searched.join("; "))),
+                message: Some(format!("Model files ({}) not found. Searched: {}", models::ALL_FILES.join(", "), searched.join("; "))),
                 model_dir: None,
             },
             EngineState::Error(e) => EngineStatus { state: StatusKind::Error, message: Some(e.clone()), model_dir: None },
@@ -104,7 +104,7 @@ fn candidates<R: Runtime>(app: &AppHandle<R>) -> Vec<PathBuf> {
 
 fn resolve<R: Runtime>(app: &AppHandle<R>) -> EngineState {
     let dirs = candidates(app);
-    match dirs.iter().find(|d| d.join(MODEL_FILE).is_file() && d.join(TOKENIZER_FILE).is_file()) {
+    match dirs.iter().find(|d| models::complete(d)) {
         Some(d) => EngineState::Idle { model_dir: d.clone() },
         None => EngineState::Missing { searched: dirs.iter().map(|d| d.display().to_string()).collect() },
     }
@@ -134,7 +134,7 @@ static LOAD_LOCK: Mutex<()> = Mutex::new(());
 
 /// The detector for a check, loading it first if needed. Blocking (up to a
 /// few seconds), so call it from `spawn_blocking`.
-pub fn acquire<R: Runtime>(app: &AppHandle<R>, state: &SharedEngine) -> Result<Arc<OnnxDetector>, String> {
+pub fn acquire<R: Runtime>(app: &AppHandle<R>, state: &SharedEngine) -> Result<Arc<Ensemble>, String> {
     if let Some(d) = ready_detector(state) {
         return Ok(d);
     }
@@ -160,7 +160,7 @@ pub fn acquire<R: Runtime>(app: &AppHandle<R>, state: &SharedEngine) -> Result<A
     };
     set(app, state, EngineState::Loading { model_dir: dir.clone() });
     let t = Instant::now();
-    match OnnxDetector::load(&dir.join(MODEL_FILE), &dir.join(TOKENIZER_FILE), &DetectorOptions::default()) {
+    match models::load_ensemble(&dir, &DetectorOptions::default()) {
         Ok(det) => {
             log::info!("model loaded in {} ms", t.elapsed().as_millis());
             let det = Arc::new(det);
@@ -175,7 +175,7 @@ pub fn acquire<R: Runtime>(app: &AppHandle<R>, state: &SharedEngine) -> Result<A
     }
 }
 
-fn ready_detector(state: &SharedEngine) -> Option<Arc<OnnxDetector>> {
+fn ready_detector(state: &SharedEngine) -> Option<Arc<Ensemble>> {
     let mut g = state.write().ok()?;
     if let EngineState::Ready { detector, last_used, .. } = &mut *g {
         *last_used = Instant::now();

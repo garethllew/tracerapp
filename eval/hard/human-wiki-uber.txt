@@ -1,0 +1,10 @@
+---
+expected: human
+expected_ai_share: 0.0
+kind: encyclopedic
+source: Wikipedia, "Uber", revision 899654830 (2019-05-31), CC BY-SA 4.0
+notes: plain factual human prose written before LLMs; false-positive check
+---
+Uber Technologies Inc. is an American multinational transportation network company (TNC) offering services that include peer-to-peer ridesharing, ride service hailing, food delivery, and a bicycle-sharing system. The company is based in San Francisco and has operations in 785 metropolitan areas worldwide. Its platforms can be accessed via its websites and mobile apps.
+
+As of 2019, Uber is estimated to have 110 million worldwide users a 69.0% market share in the United States for passenger transport, and a 25% market share for food delivery. Uber has been so prominent in the sharing economy that the changes in industries as a result of it have been referred to as uberisation, and many startups have described their products as "Uber for X".

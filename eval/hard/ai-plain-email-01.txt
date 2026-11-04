@@ -1,0 +1,23 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: email
+source: claude-sonnet plain brand voice
+notes: welcome email after signing up for a meal-kit service
+---
+Subject: Your Fieldbox account is ready
+
+Hello Dana,
+
+Your Fieldbox account is now active. This email explains what happens next so you know what to expect with your first order.
+
+Your first box is scheduled for delivery on Thursday, 14 November, between 8 am and 6 pm. We will send a text message with a one-hour window on the morning of delivery. The box contains four dinners for two people, and every recipe card lists the cook time. Most meals take 30 minutes or less.
+
+You can change your plan until midnight on Sunday, 10 November. To swap a recipe, skip a week or change the number of meals, sign in and open the Plan page. After that date, we begin packing, and changes apply from the following week.
+
+Your box arrives in a recyclable carton with insulated liners and ice packs. The liners can go in your household recycling. The ice packs contain non-toxic gel and can be thrown away with general waste.
+
+If anything is missing or damaged, reply to this email with a photo and your order number. We respond within one business day and will credit your account for the affected item.
+
+Regards,
+The Fieldbox Customer Team

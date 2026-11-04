@@ -55,6 +55,9 @@ pub fn default_threads() -> usize {
 pub struct OnnxDetector {
     session: Mutex<Session>,
     tokenizer: Tokenizer,
+    /// The tokenizer's own pad id (DeBERTa: 0, ModernBERT: 50283). Only used
+    /// when batching pads shorter chunks.
+    pad_id: i64,
     batch_size: usize,
     max_batch_tokens: usize,
     // Sessions keep a handle to their environment; we hold it too so its
@@ -69,6 +72,7 @@ impl OnnxDetector {
         tok.with_truncation(Some(TruncationParams { max_length: opts.max_tokens, ..Default::default() }))
             .map_err(|e| anyhow!("tokenizer truncation: {e}"))?;
         tok.with_padding(None);
+        let pad_id = ["[PAD]", "<pad>", "<|padding|>"].iter().find_map(|t| tok.token_to_id(t)).unwrap_or(0) as i64;
 
         let env = environment()?;
         let threads = opts.intra_threads.unwrap_or_else(default_threads);
@@ -82,6 +86,7 @@ impl OnnxDetector {
         Ok(Self {
             session: Mutex::new(session),
             tokenizer: tok,
+            pad_id,
             batch_size: opts.batch_size.max(1),
             max_batch_tokens: opts.max_batch_tokens,
             _env: env,
@@ -114,7 +119,7 @@ impl Detector for OnnxDetector {
             let batch = &order[span];
             let seq = batch.iter().map(|&i| ids[i].len()).max().unwrap_or(0).max(1);
             let b = batch.len();
-            let mut input_ids = vec![0i64; b * seq]; // pad id 0
+            let mut input_ids = vec![self.pad_id; b * seq];
             let mut mask = vec![0i64; b * seq];
             for (row, &i) in batch.iter().enumerate() {
                 let toks = &ids[i];
@@ -131,6 +136,42 @@ impl Detector for OnnxDetector {
             }
             for (row, &i) in batch.iter().enumerate() {
                 out[i] = sigmoid(logits[row]);
+            }
+        }
+        Ok(out)
+    }
+}
+
+/// Several detectors as one: a chunk's P(AI) is the MAX over members.
+///
+/// **Baseline only, not shipped** (eval `--model max`). Max of desklib and
+/// rasbt looked right on whole texts, but at Tracer's ~50-word windows rasbt
+/// fires on human prose: Wikipedia leads flagged 12/15 vs desklib's 9/15.
+/// The shipped combination is `analyze_with` (context gate + style lift),
+/// see docs/detector-ensemble.md.
+pub struct MaxEnsemble {
+    members: Vec<Box<dyn Detector>>,
+}
+
+impl MaxEnsemble {
+    pub fn new(members: Vec<Box<dyn Detector>>) -> Self {
+        Self { members }
+    }
+}
+
+impl Detector for MaxEnsemble {
+    fn score(&self, chunks: &[String]) -> Result<Vec<f32>> {
+        let mut out = vec![0f32; chunks.len()];
+        for m in &self.members {
+            let s = m.score(chunks)?;
+            if s.len() != chunks.len() {
+                bail!("ensemble member returned {} scores for {} chunks", s.len(), chunks.len());
+            }
+            for (o, v) in out.iter_mut().zip(s) {
+                // NaN never wins the max; analyze() neutralises an all-NaN result.
+                if v > *o || o.is_nan() {
+                    *o = v;
+                }
             }
         }
         Ok(out)
@@ -184,7 +225,7 @@ mod tests {
     #[test]
     #[ignore]
     fn load_drop_load_again() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tools/model-export/work/onnx");
+        let dir = crate::models::dev_model_dir();
         let (m, t) = (dir.join("tracer-int8.onnx"), dir.join("tokenizer.json"));
         let a = OnnxDetector::load(&m, &t, &DetectorOptions::default()).unwrap();
         let p1 = a.score(&["hello there, see you at three".to_string()]).unwrap()[0];
@@ -199,7 +240,7 @@ mod tests {
     #[test]
     #[ignore]
     fn scores_dont_depend_on_neighbouring_chunks() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tools/model-export/work/onnx");
+        let dir = crate::models::dev_model_dir();
         let det = OnnxDetector::load(&dir.join("tracer-int8.onnx"), &dir.join("tokenizer.json"), &DetectorOptions::default()).unwrap();
         let chunks: Vec<String> = [
             "lol ok see you at 3",
@@ -214,6 +255,33 @@ mod tests {
             let single = det.score(std::slice::from_ref(c)).unwrap()[0];
             assert_eq!(single, *b, "neighbours changed the score for {c:?}");
         }
+    }
+
+    struct Fixed(Vec<f32>);
+    impl Detector for Fixed {
+        fn score(&self, chunks: &[String]) -> Result<Vec<f32>> {
+            Ok(self.0.iter().copied().cycle().take(chunks.len()).collect())
+        }
+    }
+
+    #[test]
+    fn ensemble_takes_the_max_per_chunk() {
+        let e = MaxEnsemble::new(vec![Box::new(Fixed(vec![0.9, 0.1, 0.2])), Box::new(Fixed(vec![0.05, 0.8, 0.3]))]);
+        let c: Vec<String> = ["a", "b", "c"].map(String::from).to_vec();
+        assert_eq!(e.score(&c).unwrap(), vec![0.9, 0.8, 0.3]);
+        assert!(MaxEnsemble::new(vec![Box::new(Fixed(vec![0.5]))]).score(&[]).unwrap().is_empty());
+    }
+
+    #[test]
+    fn ensemble_rejects_a_short_member() {
+        struct Short;
+        impl Detector for Short {
+            fn score(&self, _: &[String]) -> Result<Vec<f32>> {
+                Ok(vec![0.5])
+            }
+        }
+        let e = MaxEnsemble::new(vec![Box::new(Fixed(vec![0.1])), Box::new(Short)]);
+        assert!(e.score(&["a".into(), "b".into()]).is_err());
     }
 
     #[test]

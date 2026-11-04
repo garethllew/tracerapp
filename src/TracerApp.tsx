@@ -9,6 +9,7 @@ import { prefersReducedMotion } from "./lib/score";
 import { TitleBar } from "./components/TitleBar";
 import { ResultBar } from "./components/ResultBar";
 import { HighlightedText } from "./components/HighlightedText";
+import { StyleHints } from "./components/StyleHints";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { SetupScreen } from "./components/SetupScreen";
 
@@ -204,6 +205,7 @@ export function TracerApp() {
         ) : (
           <div className="scroll">
             <HighlightedText analysis={analysis} focus={focus} tracing={tracing} onClick={edit} />
+            <StyleHints tells={analysis.tells ?? []} />
           </div>
         )}
 

@@ -1,0 +1,16 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: announcement
+source: claude-sonnet plain brand voice
+notes: news-style announcement of a corporate partnership
+---
+Brightwater Energy and Calloway Logistics announced a three-year partnership on Tuesday to convert Calloway's delivery fleet in the Midlands to electric vans. The agreement covers 240 vehicles and the installation of charging equipment at six Calloway depots.
+
+Under the terms, Brightwater will supply and maintain 150-kilowatt chargers at each depot and provide electricity from its own solar and wind sites. Calloway will buy the vans from its existing manufacturer and phase out 240 diesel vehicles by the end of 2028. The first 40 electric vans are due on the road by June.
+
+The companies said the change should cut Calloway's yearly fuel costs in the region by about 18 percent and reduce its carbon emissions by roughly 3,100 tonnes. Neither company disclosed the value of the contract. Brightwater said the first depot, in Derby, would begin installing chargers in February.
+
+Calloway employs about 2,300 drivers across the region. A spokesperson said that no jobs would be lost and that all drivers would receive training on electric vehicles, including how to plan routes around charging times. Training sessions begin in April.
+
+Brightwater was founded in 2009 and operates 14 generation sites in the United Kingdom. Calloway was founded in 1974 and is based in Nottingham.

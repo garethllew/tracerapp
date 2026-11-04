@@ -1,0 +1,14 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: explainer
+source: claude-sonnet plain brand voice
+notes: about page for a board-game cafe
+---
+Dice & Biscuit is a board-game cafe on Marsh Lane in Leeds. We have a library of 640 games, a kitchen that serves lunch until 3 pm and a bar that closes at 11 pm on weekdays and midnight on Fridays and Saturdays. Entry costs 5 pounds per person, and that covers unlimited play for the whole day.
+
+Games are shelved by weight, from light party games to long strategy titles. Each box carries a coloured label that shows the player count and the usual play time. Our staff have played every game on the shelves and will teach you the rules at your table. A typical teach takes about ten minutes.
+
+The cafe has 22 tables. Four of them are large enough for games with big boards, such as wargames and some cooperative titles. You can book a table online up to 30 days ahead. Walk-ins are welcome, but on Saturday evenings the wait can reach an hour.
+
+We run a beginner night on the first Tuesday of each month and a league night every Thursday. Children are welcome until 7 pm. The cafe is step-free, and we keep a quiet corner for players who prefer less noise. Food is mostly vegetarian, and all dishes are labelled for allergens.

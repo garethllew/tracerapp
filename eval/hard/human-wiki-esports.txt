@@ -1,0 +1,8 @@
+---
+expected: human
+expected_ai_share: 0.0
+kind: encyclopedic
+source: Wikipedia, "Esports", revision 899072613 (2019-05-27), CC BY-SA 4.0
+notes: plain factual human prose written before LLMs; false-positive check
+---
+Esports (also known as electronic sports, e-sports, or eSports) is a form of competition using video games. Most commonly, esports takes the form of organized, multiplayer video game competitions, particularly between professional players, individually or as teams. Although organized online and offline competitions have long been a part of video game culture, these were largely between amateurs until the late 2000s, when participation by professional gamers and spectatorship in these events through live streaming saw a large surge in popularity. By the 2010s, esports was a significant factor in the video game industry, with many game developers actively designing toward a professional esports subculture. The most common video game genres associated with esports are multiplayer online battle arena (MOBA), first-person shooter (FPS), fighting, digital collectible card games, battle royale games and real-time strategy (RTS). Popular esports titles include MOBA games such as, League of Legends, Dota 2 and Smite, FPS titles such as Counter-Strike and Call of Duty, CrossFire and Rainbow Six Siege which are in the FPS sub-genre of tactical shooters , Overwatch which is in the FPS sub-genre of hero shooter , fighting games such as Street Fighter, Super Smash Bros., Mortal Kombat and Soulcalibur, Beat 'em up such as Dungeon Fighter Online, digital collectible card games such as Hearthstone, battle royale games such as PlayerUnknown's Battlegrounds and Fortnite Battle Royale, and RTS titles StarCraft.

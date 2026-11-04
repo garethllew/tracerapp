@@ -1,0 +1,12 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: other
+source: gemini brand-voice (user)
+notes: Gemini + brand-voice skill; Pangram 100% AI, Tracer 100% human
+---
+FACEIT is an independent competitive platform for Counter-Strike 2, built as an alternative to standard matchmaking. While you can queue directly inside CS2, standard matchmaking pairs players across wide skill ranges on default server settings. FACEIT runs matches on dedicated servers using competitive tournament settings, including overtime.
+
+To play, you connect your Steam account, launch the FACEIT Anti-Cheat, and queue through the client or web app. The Anti-Cheat operates at the kernel level to block unauthorized software and hardware exploits before you enter the server. Your matches update a visible Elo rating that places you into Levels 1 through 10, matching you against players in your skill bracket.
+
+Beyond standard matchmaking, FACEIT provides a direct competitive ladder from daily play to professional teams. You can compete in ladders, daily tournaments, and structured leagues for FACEIT Points and cash prize pools. At the top of the path is the FACEIT Pro League (FPL), an invite-only hub where top Challenger players compete directly with professional players. Competing in FPL gives players direct exposure to professional scouts and tier-one organizations.

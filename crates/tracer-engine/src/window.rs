@@ -101,6 +101,15 @@ pub fn build_grouped_windows(words: &[usize], groups: &[Range<usize>], cfg: &Eng
         .collect()
 }
 
+/// Each group cut into doc-sized chunks, as indices into the full sentence
+/// list: the paragraph-level spans the style detector scores.
+pub fn build_group_chunks(words: &[usize], groups: &[Range<usize>], cfg: &EngineConfig) -> Vec<Range<usize>> {
+    groups
+        .iter()
+        .flat_map(|g| build_doc_chunks(&words[g.clone()], cfg).into_iter().map(move |r| g.start + r.start..g.start + r.end))
+        .collect()
+}
+
 /// Consecutive, non-overlapping chunks of at most `doc_chunk_words` (a
 /// single over-size sentence still gets its own chunk).
 pub fn build_doc_chunks(words: &[usize], cfg: &EngineConfig) -> Vec<Range<usize>> {
@@ -242,5 +251,13 @@ mod tests {
         let c = build_doc_chunks(&w, &cfg());
         assert_eq!(c, vec![0..6, 6..12, 12..13]);
         assert_eq!(build_doc_chunks(&[400], &cfg()), vec![0..1]);
+    }
+
+    #[test]
+    fn group_chunks_stay_inside_groups() {
+        // group 0..2 (100 words), group 2..10 (8 x 50 = 400 words -> 300 + 100)
+        let w = [50, 50, 50, 50, 50, 50, 50, 50, 50, 50];
+        let c = build_group_chunks(&w, &[0..2, 2..10], &cfg());
+        assert_eq!(c, vec![0..2, 2..8, 8..10]);
     }
 }

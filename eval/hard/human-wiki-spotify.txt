@@ -1,0 +1,8 @@
+---
+expected: human
+expected_ai_share: 0.0
+kind: encyclopedic
+source: Wikipedia, "Spotify", revision 899696851 (2019-05-31), CC BY-SA 4.0
+notes: plain factual human prose written before LLMs; false-positive check
+---
+Spotify Technology S.A. (/ˈspɒtɪfaɪ/) is a Swedish media-services provider founded in 2006. The company's primary business is its audio streaming platform that provides DRM-protected music and podcasts from record labels and media companies. As a freemium service, basic features are free with advertisements or automatic music videos, while additional features, such as improved streaming quality, are offered via paid subscriptions. Launched on 7 October 2008, the Spotify platform provides access to over forty million tracks. Users can browse by parameters such as artist, album, or genre, and can create, edit, and share playlists. Spotify is available in most of Europe and the Americas, Australia, New Zealand, and parts of Africa and Asia, and on most modern devices, including Windows, macOS, and Linux computers, and iOS, Windows Phone, and Android smartphones and tablets. As of April 2019, it had 217 million monthly active users, including 100 million paying subscribers. Unlike physical or download sales, which pay artists a fixed price per song or album sold, Spotify pays royalties based on the number of artists' streams as a proportion of total songs streamed. It distributes approximately 70% of total revenue to rights holders, who then pay artists based on their individual agreements. Spotify has faced criticism from artists and producers including Taylor Swift and Thom Yorke, who have argued that it does not fairly compensate musicians.

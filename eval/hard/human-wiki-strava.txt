@@ -1,0 +1,10 @@
+---
+expected: human
+expected_ai_share: 0.0
+kind: encyclopedic
+source: Wikipedia, "Strava", revision 899666019 (2019-05-31), CC BY-SA 4.0
+notes: plain factual human prose written before LLMs; false-positive check
+---
+Strava is a social fitness network, that is primarily used to track cycling and running exercises, using GPS data although alternative types are available . Strava is a free service with no advertising in its mobile application, but offered monthly subscription plan Strava Premium before discontinuing the program and replacing it with Strava Summit. Strava Metro, a program marketed towards city planner uses cycling data from Strava users in supported cities and regions allows Strava to remain ad-free for all users.
+
+Strava was founded in 2009 by Mark Gainey and Michael Horvath, and is headquartered in San Francisco, California. During the early years of Strava, both founders held CEO positions before being succeeded by current CEO James Quarles. Strava has not published numbers of its user base and paying users although the service claims it was adding one million new users every 45 days, with 8 million activities uploaded each day.

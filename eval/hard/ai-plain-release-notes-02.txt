@@ -1,0 +1,16 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: release-notes
+source: claude-sonnet plain brand voice
+notes: prose release notes for a team messaging platform
+---
+Release 18.4 of Tallymail ships today to all workspaces. It adds scheduled sends, changes how notifications are grouped and fixes a sync problem on Android.
+
+You can now schedule a message to send at a later time. Write the message as usual, open the menu next to the Send button and choose a date and time. Scheduled messages appear in a new Drafts and Scheduled view, where you can edit or cancel them until the moment they are sent. Messages can be scheduled up to 90 days ahead.
+
+Notifications from the same channel are now grouped into one alert on desktop. If five people reply in a thread within a minute, you will see a single notification with a count instead of five separate ones. You can switch back to the old behaviour in Settings under Notifications. Mentions always arrive as their own alert.
+
+On Android, we fixed an issue where read messages could appear as unread after the app had been closed for more than a day. The fix is included in app version 18.4.1, which is rolling out through Google Play over the next three days.
+
+Workspace admins can also set a default time zone for new members. The setting is in the Admin console under General. It does not change the time zone of existing members.

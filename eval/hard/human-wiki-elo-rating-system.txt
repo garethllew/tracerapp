@@ -1,0 +1,8 @@
+---
+expected: human
+expected_ai_share: 0.0
+kind: encyclopedic
+source: Wikipedia, "Elo rating system", revision 899088339 (2019-05-27), CC BY-SA 4.0
+notes: plain factual human prose written before LLMs; false-positive check
+---
+The Elo rating system is a method for calculating the relative skill levels of players in zero-sum games such as chess. It is named after its creator Arpad Elo, a Hungarian-American physics professor. The Elo system was originally invented as an improved chess rating system over the previously used Harkness system, but is also used as a rating system for multiplayer competition in a number of video games, association football, American football, basketball, Major League Baseball, table tennis, Scrabble, board games such as Diplomacy and other games. The difference in the ratings between two players serves as a predictor of the outcome of a match. Two players with equal ratings who play against each other are expected to score an equal number of wins. A player whose rating is 100 points greater than their opponent's is expected to score 64%; if the difference is 200 points, then the expected score for the stronger player is 76%. A player's Elo rating is represented by a number which increases or decreases depending on the outcome of games between rated players. After every game, the winning player takes points from the losing one. The difference between the ratings of the winner and loser determines the total number of points gained or lost after a game. In a series of games between a high-rated player and a low-rated player, the high-rated player is expected to score more wins. If the high-rated player wins, then only a few rating points will be taken from the low-rated player.

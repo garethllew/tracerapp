@@ -1,0 +1,16 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: help
+source: claude-sonnet plain brand voice
+notes: help article on setting up two-factor authentication
+---
+Two-factor authentication adds a second step to your sign-in. After you enter your password, you also enter a six-digit code from your phone. This protects your Parcelo account even if someone learns your password. This article shows you how to turn it on.
+
+You will need an authenticator app on your phone. Parcelo works with any app that follows the standard time-based code format. Install one before you begin.
+
+Sign in on a computer and open Account, then Security. Under Two-Factor Authentication, select Turn On. A square QR code appears on the screen. Open your authenticator app, choose to add a new account and scan the code. If you cannot scan it, select Enter Key Manually and type the 16-character key shown below the code.
+
+The app will now show a six-digit code that changes every 30 seconds. Type the current code into the box on the Parcelo page and select Confirm. Parcelo will then show ten backup codes. Each code can be used once if you lose your phone. Save them in a password manager or print them, and keep them away from your phone.
+
+From now on, Parcelo asks for a code each time you sign in on a new device. You can tick Trust This Device to skip the code on that device for 30 days. To turn off two-factor authentication, return to the same page and select Turn Off.

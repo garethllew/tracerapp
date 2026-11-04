@@ -1,0 +1,25 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: chat
+source: Claude (this session's "what next" answer), pasted into Tracer by the user
+notes: real-world miss, 2026-11-04 (Tracer reported human). Plain technical chatbot answer with markdown lists; both models read it human until line breaks were kept in model input.
+---
+1. Merge it to `main` and cut a proper release (recommended next). Right now the new detector only exists on `detector-ensemble-wip` and in a local installer that still says 0.1.0. The steps:
+
+* Open a PR into `main` so CI runs the full test suite.
+* Bump the version to 0.2.0 in `package.json`, `tauri.conf.json` and `Cargo.toml`, so installs can be told apart.
+* Tag `v0.2.0`. The release workflow then builds a draft GitHub release for you to review and publish.
+
+`model-v2` is already published, so fresh installs will work as soon as the release is out.
+2. Test it on more real text. The thresholds were tuned on 30 hard texts and 20 samples, and a few results sit close to the line (one AI explainer at 53%; two human Wikipedia texts at 43–46%). Three kinds of text haven’t been tested at all, and they’re where I’d expect it to fail:
+
+* a human email with one pasted plain-style AI paragraph (the gate may hide it);
+* a long single-paragraph brand-voice AI text (rasbt can’t help there);
+* texts over 1,000 words (each check now takes about twice as long).
+
+Adding 10–15 real examples like these to `eval/hard` and re-running the sweep would show whether 0.5 / 0.95 hold up. Your own pastes are the best source.
+3. Small fixes I noticed along the way:
+
+* No single-instance guard. A second launch adds a second tray icon and fights over the hotkey. It’s a one-plugin fix (`tauri-plugin-single-instance`).
+* Partial highlights on human text. rasbt flags one paragraph in a few human Wikipedia texts. The idea in the report (only let rasbt lift paragraphs when they make up at least half the text) is worth testing once there’s more data from step 2.

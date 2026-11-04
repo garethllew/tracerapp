@@ -1,0 +1,14 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: explainer
+source: claude-sonnet plain brand voice
+notes: product about page for a cycling app
+---
+Ridgeline is a route-planning app for road and gravel cyclists. It builds rides from your start point, your target distance and the kind of surface you want to ride on. You can set a maximum climb per ride, and the app will not suggest a route that goes over it.
+
+Routes are drawn from a map of about 4.2 million kilometres of paved and unpaved roads. Each segment carries a surface rating, a traffic rating and a gradient profile. Ridgeline combines these into a single difficulty score from 1 to 10 so you can compare two routes at a glance. The score is based on your own past rides once you have logged ten or more.
+
+Ridgeline works offline. Download a route before you leave and turn-by-turn prompts run from your phone or a compatible head unit without a signal. Battery use is low because the screen stays dark between turns. In our tests, a six-hour ride used about 14 percent of a phone battery.
+
+The free plan includes three saved routes and basic navigation. The Club plan costs 6 euros a month and adds unlimited routes, group ride sharing for up to 25 people and export to GPX and FIT files. Ridgeline is built by a team of eleven in Ghent, Belgium.

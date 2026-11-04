@@ -1,7 +1,9 @@
 //! First-run model download: the only network access Tracer ever makes.
 //!
-//! Files come from the `model-v1` release on github.com/garethllew/tracerapp
-//! and are pinned by exact size + SHA-256. Each streams to `<file>.part`,
+//! Files come from the `model-v1` (desklib) and `model-v2` (rasbt) releases
+//! on github.com/garethllew/tracerapp and are pinned by exact size + SHA-256.
+//! Files already present and verified are skipped, so an install that has
+//! model-v1 only fetches the two model-v2 files. Each streams to `<file>.part`,
 //! hashed as it arrives, and is renamed into place only once verified, so
 //! nothing unverified ever sits at the real path (Vixer's models.rs rule).
 //! Unlike Vixer, an interrupted transfer keeps its `.part` and the retry
@@ -19,28 +21,45 @@ use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 
 use crate::engine::{self, SharedEngine};
+use tracer_engine::models;
 
-pub const MODEL_NAME: &str = "desklib/ai-text-detector-v1.01 (INT8 ONNX)";
-pub const MODEL_VERSION: &str = "model-v1";
-const BASE_URL: &str = "https://github.com/garethllew/tracerapp/releases/download/model-v1";
+pub const MODEL_NAME: &str = "desklib/ai-text-detector-v1.01 (INT8) + rasbt/ai-text-detector-modernbert (bf16)";
+pub const MODEL_VERSION: &str = "model-v1 + model-v2";
+const RELEASES: &str = "https://github.com/garethllew/tracerapp/releases/download";
 
 pub struct ModelFile {
     pub name: &'static str,
+    /// The GitHub release tag the file is attached to.
+    pub release: &'static str,
     pub size: u64,
     pub sha256: &'static str,
 }
 
-/// Small file first so a bad connection fails fast.
-pub const FILES: [ModelFile; 2] = [
+/// Small files first so a bad connection fails fast.
+pub const FILES: [ModelFile; 4] = [
     ModelFile {
-        name: engine::TOKENIZER_FILE,
+        name: models::DESKLIB_TOKENIZER,
+        release: "model-v1",
         size: 8_656_624,
         sha256: "5124ef2ead1a10a717703bc436de7f353da76d6340e4587719b42b1693707964",
     },
     ModelFile {
-        name: engine::MODEL_FILE,
+        name: models::STYLE_TOKENIZER,
+        release: "model-v2",
+        size: 3_583_228,
+        sha256: "6c8aaa9a542084f2457eab775d4eeb51f92a70c0fd9de28d5edb0ddec3c08d30",
+    },
+    ModelFile {
+        name: models::DESKLIB_MODEL,
+        release: "model-v1",
         size: 838_357_272,
         sha256: "de1368a264bd8cfe9f6b72291da3db56191f645e4568f8f037cea0790d380b0b",
+    },
+    ModelFile {
+        name: models::STYLE_MODEL,
+        release: "model-v2",
+        size: 301_768_309,
+        sha256: "7ae83f2fae61a1d6739e5dff89e171095cfb4c642e6f07a7ee3982a22381d6f8",
     },
 ];
 
@@ -141,7 +160,7 @@ async fn run_download<R: Runtime>(app: &AppHandle<R>, force: bool) -> Result<Pat
             log::warn!("{} failed verification; downloading again", f.name);
         }
         let base = done_before;
-        download_resumable(&format!("{BASE_URL}/{}", f.name), &dest, f.size, f.sha256, &|received| {
+        download_resumable(&format!("{RELEASES}/{}/{}", f.release, f.name), &dest, f.size, f.sha256, &|received| {
             emit("downloading", base + received)
         })
         .await
@@ -158,7 +177,7 @@ fn friendly(e: &anyhow::Error) -> String {
     if s.contains("checksum") || s.contains("larger than") {
         "The downloaded file didn't match the expected checksum, so it was discarded. Please try again.".into()
     } else if s.contains("No space") || s.contains("os error 112") {
-        "Not enough disk space: the model needs about 850 MB.".into()
+        "Not enough disk space: the models need about 1.2 GB.".into()
     } else {
         "Download interrupted. Check your connection and press Retry: it continues where it left off.".into()
     }
@@ -401,8 +420,14 @@ mod tests {
 
     #[test]
     fn pinned_files_add_up() {
-        assert_eq!(total_size(), 847_013_896);
+        assert_eq!(total_size(), 1_152_365_433);
         assert!(FILES.iter().all(|f| f.sha256.len() == 64));
+        // Exactly the engine's model set, so a finished download is `complete`.
+        let mut names: Vec<_> = FILES.iter().map(|f| f.name).collect();
+        let mut want = models::ALL_FILES.to_vec();
+        names.sort();
+        want.sort();
+        assert_eq!(names, want);
     }
 
     fn tempdir() -> PathBuf {

@@ -79,6 +79,27 @@ pub fn model_text(s: &str) -> String {
     s.split_whitespace().filter(|t| !is_url(t)).collect::<Vec<_>>().join(" ")
 }
 
+/// The model input for a run of prose pieces (`idx`, ascending piece
+/// indices): their `model_text`s joined with the layout between them in the
+/// source, so a line break stays "\n" and a blank line "\n\n". rasbt reads
+/// layout: one AI answer scored 0.97 as pasted but 0.003 with its lines
+/// joined by spaces. desklib's tokenizer ignores line breaks either way.
+pub fn span_text(text: &str, pieces: &[Piece], idx: &[usize]) -> String {
+    let mut out = String::new();
+    for (k, &i) in idx.iter().enumerate() {
+        if k > 0 {
+            let between = &text[pieces[idx[k - 1]].range.end..pieces[i].range.start];
+            out.push_str(match between.matches('\n').count() {
+                0 => " ",
+                1 => "\n",
+                _ => "\n\n",
+            });
+        }
+        out.push_str(&pieces[i].model_text);
+    }
+    out
+}
+
 pub fn count_words(s: &str) -> usize {
     s.unicode_words().count()
 }
@@ -296,6 +317,14 @@ mod tests {
         let p = segment(t, &cfg());
         tiles(t, &p);
         assert_eq!(prose(t, &p), vec!["First sentence here.", "Second one!", "Third?", "Yes."]);
+    }
+
+    #[test]
+    fn span_text_keeps_line_breaks_between_sentences() {
+        let t = "First one here.  Second  one.\n* bullet line\n\nNew paragraph.";
+        let p = segment(t, &EngineConfig::default());
+        let prose: Vec<usize> = p.iter().enumerate().filter(|(_, x)| x.kind == PieceKind::Prose).map(|(i, _)| i).collect();
+        assert_eq!(span_text(t, &p, &prose), "First one here. Second one.\n* bullet line\n\nNew paragraph.");
     }
 
     #[test]

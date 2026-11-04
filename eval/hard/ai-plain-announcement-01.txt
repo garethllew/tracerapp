@@ -1,0 +1,16 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: announcement
+source: claude-sonnet plain brand voice
+notes: news-style announcement of a venue opening
+---
+Harbour Street Market will open to the public on Saturday, 7 March, in the former Canal Street tram depot. The covered market has space for 48 independent traders and a 120-seat food hall.
+
+The building, which dates from 1911, closed as a depot in 1987 and has been used for storage since. A two-year renovation led by the Corvane Property Trust restored the original steel roof and added underfloor heating. The project cost 9.6 million pounds, of which 2.1 million came from the city council.
+
+The market will be open Wednesday to Sunday from 9 am to 7 pm. Around 30 of the stalls have been let to traders from the surrounding area, including a fishmonger, two bakeries and a bicycle repair shop. The food hall will host six kitchens, with a seventh unit reserved for short-term pop-ups.
+
+Parking is available at the Canal Street car park, a four-minute walk away, and the number 12 bus stops outside the main entrance. The building has step-free access throughout. A bike store at the east door holds 80 cycles.
+
+Opening day will include a ribbon-cutting at 10 am by the Lord Mayor. The trust expects around 4,000 visitors over the first weekend and has said that stall rents will be reviewed after one year.
