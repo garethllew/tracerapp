@@ -1,0 +1,8 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: slack
+source: synthetic
+notes: Short (15-50 words) lowercase gripe with emoji and in-joke
+---
+ugh the printer on 4 is dead again. dan says it's the toner, i say it's cursed. using the one by the kitchen till someone with actual powers shows up 😩

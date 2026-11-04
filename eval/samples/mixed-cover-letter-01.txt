@@ -1,0 +1,16 @@
+---
+expected: mixed
+expected_ai_share: 0.60
+kind: cover-letter
+source: synthetic
+notes: Opening paragraph is genuinely personal (human); the two paragraphs after it (from 'I am a results-driven professional') are AI boilerplate
+---
+Dear Ms Chen,
+
+My gran ran a bakery on Lister Road for thirty years and I did the 5am shift every school holiday from age twelve, so when I saw you were hiring for a bakery operations lead I read the advert twice on the bus and missed my stop.
+
+I am a results-driven professional with a proven track record of optimizing operations, leading high-performing teams, and delivering exceptional customer experiences. I am confident that my strong communication skills and attention to detail make me an ideal candidate for this role.
+
+I am excited about the opportunity to leverage my skills in a dynamic environment and contribute to your continued growth. Thank you for your time and consideration. I look forward to hearing from you.
+
+Dave Whitlock

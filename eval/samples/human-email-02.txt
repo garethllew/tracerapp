@@ -1,0 +1,31 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: email
+source: synthetic
+notes: LONG (250-450 words) rambling personal email with a mid-message list, tangents, typos
+---
+Subject: moving update (long, sorry)
+
+Hey Tash,
+
+so. the move. where do I even start. We got the keys on the 9th, which was a Friday, which meant the removal guys wouldn't come til Monday, which meant a whole weekend sleeping on a mattress in an empty flat that smells faintly of someone elses curry. Not bad actually. Pip loved it, ran laps round the living room like a lunatic.
+
+Monday the removal guys turned up at 7:40am (!!) and the sofa did not fit up the stairs. Obviously. I measured it, i swear i measured it, but I measured the door and not the turn on the landing. They took the banister off in the end. Gary, the older one, said he'd seen worse, which i choose to believe.
+
+Things that are now true:
+- the kitchen is the size of a wardrobe but has a window, so I'm calling it a win
+- the neighbour upstairs plays the cello. badly?? but with feeling
+- I cannot find the box with the kettle. Been using a saucepan for 3 days
+- Pip has decided the radiator cupboard is hers
+
+Work has been mental too, Hollis wants the report by the 24th and i've done approx nothing. don't tell anyone. my plan is to just panic productively next week.
+
+Anyway! You're still coming up on the 30th right? Spare room has a bed now, technically. It's an air bed. It has a slow leak so you'll wake up on the floor at about 4am but I'll make you a proper breakfast to compensate, I found the frying pan at least.
+
+Also did you ever hear back from the Lisbon thing? Mum keeps asking and I keep saying I dont know. Also Dev says hi, he's currently on the phone to the broadband people for the third time, you can probably hear the hold music from there. Text me, dont email, I never check this one.
+
+Love you, miss you, come soon
+Bea x
+
+ps if you see a box labelled MISC (KITCHEN?) in your head, send a thought its way

@@ -1,0 +1,19 @@
+---
+expected: ai
+expected_ai_share: 1.00
+kind: cover-letter
+source: synthetic
+notes: Stock software-engineer cover letter with tricolons and generic enthusiasm
+---
+Dear Hiring Team,
+
+I am writing to express my enthusiastic interest in the Software Engineer position. As a results-driven developer with a strong foundation in full-stack development, I am eager to bring my technical expertise, problem-solving abilities, and collaborative mindset to your organization.
+
+Throughout my career, I have consistently demonstrated the ability to design scalable solutions, mentor junior engineers, and deliver high-quality code in fast-paced environments. I thrive in dynamic settings where innovation and teamwork are valued.
+
+I am particularly drawn to your company's commitment to excellence and its mission to transform the industry. I am confident that my background aligns well with your needs, and I am excited about the opportunity to contribute to your continued growth.
+
+Thank you for considering my application. I look forward to the possibility of discussing how my skills can benefit your team.
+
+Best regards,
+Jordan Lee

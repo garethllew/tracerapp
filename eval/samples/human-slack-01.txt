@@ -1,0 +1,8 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: slack
+source: synthetic
+notes: Very short casual reply; tests the too-short gate (<15 words)
+---
+lol yeah ok see you at 3

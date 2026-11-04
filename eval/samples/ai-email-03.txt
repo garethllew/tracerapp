@@ -1,0 +1,25 @@
+---
+expected: ai
+expected_ai_share: 1.00
+kind: email
+source: synthetic
+notes: Apology/service email: empathic stock phrasing, structured reassurance, upbeat close
+---
+Subject: Update on Your Recent Order
+
+Dear Valued Customer,
+
+Thank you for reaching out, and please accept my sincere apologies for the inconvenience you have experienced with your recent order. We understand how frustrating delays can be, and we are committed to making this right.
+
+Here is what we are doing to resolve the situation:
+
+1. Your order has been prioritized and will ship within 24 hours.
+2. We have applied a 15% credit to your account as a gesture of goodwill.
+3. A dedicated team member will monitor your delivery to ensure a smooth experience.
+
+We truly appreciate your patience and understanding. Please don't hesitate to contact us if there is anything else we can do to assist you.
+
+Thank you for choosing us. We value your business and look forward to serving you again.
+
+Kind regards,
+Customer Support Team

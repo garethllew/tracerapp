@@ -1,0 +1,23 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: slack
+source: synthetic
+notes: Human Slack message containing a ~10-line fenced code block; tests handling/stripping of code
+---
+ok so this is what i ended up with for the retry thing, works but it's ugly lol
+
+```
+async function fetchWithRetry(url, tries = 3) {
+  for (let i = 0; i < tries; i++) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return res.json();
+    } catch (e) {}
+    await new Promise(r => setTimeout(r, 500 * (i + 1)));
+  }
+  throw new Error("gave up on " + url);
+}
+```
+
+feel free to rewrite it, i was half asleep. also yes i know the empty catch is bad, shh

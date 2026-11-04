@@ -1,0 +1,10 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: email
+source: synthetic
+notes: Short (15-50 words) quick reply with apology and a specific payment detail
+---
+Subject: Re: invoice
+
+Yep got it, thanks. Will pay friday when the thing from Hollis lands. Sorry it's late again, month end is a mess for me. - Ravi

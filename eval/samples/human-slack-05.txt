@@ -1,0 +1,14 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: slack
+source: synthetic
+notes: Slack-style notes with ragged hyphen bullets, abbreviations, direct @mention
+---
+back from the vendor call, quick notes
+- they can do the 14th but only mornings
+- price is still 2.4k, no movement. i pushed, got nothing
+- ask abt the extra cable thing?? forgot to ask
+- sally from their side is out till monday so no contract til then
+
+honestly feel kinda meh about them. thoughts? @tom you were gonna check the other quote right

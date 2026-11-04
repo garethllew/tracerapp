@@ -1,0 +1,19 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: email
+source: synthetic
+notes: Personal email to a parent: specifics, in-jokes, lowercase drift, no structure
+---
+Subject: re: saturday
+
+hey mum,
+
+yeah saturday works, we'll get there around 1ish, depends on whether Leo naps in the car (fingers crossed). can you not do the big roast thing again?? last time we all ended up comatose on the sofa and Dad did that snoring thing during the quiz haha
+
+i'll bring the lemon cake, the one from the Hartley's recipe you liked. might be a bit sunk in the middle, oven's been weird since the move
+
+oh and the boiler guy finally came. 340 quid. don't tell Dad i told you
+
+xx
+Jess

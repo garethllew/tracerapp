@@ -1,0 +1,16 @@
+---
+expected: mixed
+expected_ai_share: 0.55
+kind: linkedin
+source: synthetic
+notes: Human opening and sign-off; the middle three paragraphs (from 'Here's the thing') are AI thought-leadership filler
+---
+ok so i got asked to speak at the Manchester meetup next month and i have already regretted saying yes 3 times.
+
+Here's the thing: public speaking isn't just about delivering a message, it's about building trust, sparking curiosity, and inspiring action.
+
+In today's fast-paced landscape, the leaders who stand out are those who communicate with authenticity and purpose.
+
+What's one lesson you've learned about speaking up? 👇
+
+anyway if you're coming please sit near the front and nod. thanks

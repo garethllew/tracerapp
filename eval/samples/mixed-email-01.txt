@@ -1,0 +1,18 @@
+---
+expected: mixed
+expected_ai_share: 0.40
+kind: email
+source: synthetic
+notes: Personal email; paragraphs 1 and 3 are human, paragraph 2 (the project description) is AI-written
+---
+Subject: re: the project thing
+
+hey Callum,
+
+yeah sure, happy to be a reference, just tell me when they'll ring so i'm not in the shower or something. glad it worked out in the end, that was a rough few weeks wasn't it
+
+Over the course of the project, I led the redesign of our internal reporting platform, collaborating closely with cross-functional stakeholders to streamline workflows and improve data accessibility. This initiative resulted in a 30% reduction in processing time and significantly enhanced team productivity.
+
+that's roughly what i'll say anyway, minus the corporate bit. dinner at some point? you owe me for the kebab incident
+
+Sam

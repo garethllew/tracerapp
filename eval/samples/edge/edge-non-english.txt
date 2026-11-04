@@ -1,0 +1,8 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: slack
+source: synthetic
+notes: About 80 words of casual French; tests behaviour on non-English input (detector may be unreliable or should flag unsupported language)
+---
+salut les gars, juste un petit message pour dire que la reunion de demain est decalee a 15h parce que Camille a un rdv chez le dentiste (la pauvre). du coup on se retrouve en salle Montmartre, celle avec le videoprojecteur qui fait un bruit bizarre, mais bon on fera avec. n'oubliez pas d'apporter vos notes sur le dossier Lefebvre, parce que Thomas a encore perdu les siennes lol. ah et si quelqu'un passe devant la boulangerie du coin, je veux bien un pain au chocolat, je rembourse promis. bisous et a demain !

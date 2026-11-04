@@ -1,0 +1,11 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: slack
+source: synthetic
+notes: Casual dev chatter with short inline code snippets, lowercase, uneven lines
+---
+ok found it. it was the `--no-cache` flag, staging build was reusing some ancient layer from tuesday
+so yeah if ur seeing weird css on stg just rerun w/ `docker build --no-cache .` and it goes away
+no idea why it only broke for marta's branch tho. gonna ask priya tmrw, she wrote the original dockerfile i think
+anyway. lunch? the thai place on Beck St has that 11:45 deal

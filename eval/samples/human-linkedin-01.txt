@@ -1,0 +1,12 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: linkedin
+source: synthetic
+notes: Casual, self-deprecating LinkedIn post with concrete local details; anti-thought-leadership
+---
+Not a thought leadership post, sorry. Just wanted to say we shipped the new booking flow on Thursday and I have barely slept since 😅
+
+Huge thanks to Aiko, who found the timezone bug at 11pm the night before (it only showed up for people in Auckland, which is a very specific kind of cursed).
+
+Also our office plant died. RIP Gerald. Hiring a junior frontend dev in Leeds btw, DM me

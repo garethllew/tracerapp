@@ -1,0 +1,8 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: other
+source: synthetic
+notes: A bare URL and nothing else; should be treated as too short / not analysable
+---
+https://docs.google.com/document/d/1xYz-Example_abc123/edit?usp=sharing

@@ -1,0 +1,27 @@
+---
+expected: mixed
+expected_ai_share: 0.30
+kind: email
+source: synthetic
+notes: LONG (250-450 words). Human opening and closing; the AI part is the single polished paragraph in the middle that starts 'I am writing to provide'
+---
+Subject: re: workshop / thursday
+
+Hi Helen,
+
+Thanks for getting back so fast, and sorry for the radio silence, i was away at my sister's wedding in Porto and basically didn't look at my laptop for a week. the wedding was lovely but also there was a goat involved, long story, ask me on thursday.
+
+So, on to the workshop. I've been trying to work out what to put in the pre-read and honestly I kept going round in circles, so I asked an AI to write the summary bit for me, here's what it gave me and I haven't changed it much:
+
+I am writing to provide an overview of the upcoming workshop, which aims to foster collaboration, drive innovation, and align stakeholders around a shared vision. The session will begin with a high-level introduction to our strategic objectives, followed by interactive breakout discussions designed to surface key challenges and opportunities. Participants will leave with a clear understanding of next steps and a roadmap for continued progress. We are confident that this workshop will serve as a valuable catalyst for meaningful change across the organization. Please do not hesitate to reach out should you require any additional information or clarification.
+
+I mean it's fine, it's just not very us is it. Can you rewrite it in your words? You always make things sound like people are actually going to turn up.
+
+Couple of practical things, the room on the 3rd floor has no windows and the heating is either off or tropical, nothing in between, so tell people to dress in layers. Femi said he'd bring the good coffee (the one from the place near the station, not the stuff from the machine) but I wouldn't count on it, he's forgotten twice already. I'll do biscuits. Proper ones.
+
+Also Kwame can only do the morning, so if we're doing the budget bit I'd put it first, otherwise we'll end up having the whole argument again without him and he'll be annoyed on Friday.
+
+Let me know what you think. If it's easier just ring me, I'm in the car most of tomorrow afternoon.
+
+Cheers,
+Mo

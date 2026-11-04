@@ -1,0 +1,14 @@
+---
+expected: ai
+expected_ai_share: 1.00
+kind: linkedin
+source: synthetic
+notes: Short (15-50 words) motivational LinkedIn post with tricolon and CTA
+---
+Success isn't about working harder. It's about working smarter. 💡
+
+Focus on what matters. Build habits that last. Surround yourself with people who lift you up.
+
+Agree? 👇
+
+#Growth #Mindset

@@ -1,0 +1,19 @@
+---
+expected: ai
+expected_ai_share: 1.00
+kind: cover-letter
+source: synthetic
+notes: Stock cover letter: excited to apply, proven track record, confident, leverage
+---
+Dear Hiring Manager,
+
+I am excited to apply for the Marketing Manager position at your company. With over five years of experience in digital marketing, I have developed a proven track record of driving brand awareness, increasing engagement, and delivering measurable results.
+
+In my previous role, I led cross-functional teams to develop and execute innovative campaigns that leveraged data-driven insights, resulting in a 35% increase in lead generation. I am passionate about storytelling, collaboration, and continuous improvement.
+
+I am confident that my skills and experience make me an excellent fit for this role. I would welcome the opportunity to discuss how I can contribute to your team's continued success.
+
+Thank you for your time and consideration. I look forward to hearing from you.
+
+Sincerely,
+Alex Morgan

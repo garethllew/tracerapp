@@ -1,0 +1,24 @@
+# Python model-export tooling
+tools/model-export/.venv/
+tools/model-export/work/
+__pycache__/
+*.onnx
+
+# Node / Vite
+node_modules/
+dist/
+
+# Rust / Tauri
+target/
+src-tauri/target/
+src-tauri/gen/
+
+# Local builds and logs
+releases/
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,21 @@
+---
+expected: ai
+expected_ai_share: 1.00
+kind: email
+source: synthetic
+notes: Polished professional outreach email with stock phrases
+---
+Subject: Following Up on Our Conversation
+
+Dear Ms. Alvarez,
+
+I hope this email finds you well. I wanted to reach out to follow up on our conversation last week regarding the potential partnership between our organizations.
+
+I truly appreciate the time you took to share your insights. I believe there is a significant opportunity for us to collaborate in a way that is mutually beneficial and aligned with both of our strategic goals.
+
+Please find the proposal attached for your review. Should you have any questions or require additional information, please don't hesitate to reach out.
+
+I look forward to hearing from you.
+
+Best regards,
+Jonathan Pierce

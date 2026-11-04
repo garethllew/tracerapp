@@ -1,0 +1,8 @@
+---
+expected: ai
+expected_ai_share: 1.00
+kind: slack
+source: synthetic
+notes: Very short polished reply; tests the too-short gate (<15 words) with an AI-sounding line
+---
+Thanks for the update! I'll review and circulate feedback by EOD.

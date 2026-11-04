@@ -1,0 +1,12 @@
+---
+expected: mixed
+expected_ai_share: 0.30
+kind: slack
+source: synthetic
+notes: Human opening and closing; paragraph 2 (the polished 'Key Takeaways' summary) is AI, pasted mid-message
+---
+ok so i ran thru the customer interviews with chatgpt bc i did not have the energy to re-read 9 transcripts after the offsite. here's what it spat out
+
+**Key Takeaways:** Customers consistently highlighted the importance of seamless onboarding, transparent pricing, and responsive support. Moreover, the interviews underscore a significant opportunity to leverage personalization to enhance retention and drive long-term value.
+
+tbh the pricing one was the only thing that actually came up like every call. ill dig out the quote from the guy in Leicester, he was mad lol. @Nina can u check the support stuff, i skimmed it

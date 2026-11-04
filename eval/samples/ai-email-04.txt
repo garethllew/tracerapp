@@ -1,0 +1,13 @@
+---
+expected: ai
+expected_ai_share: 1.00
+kind: email
+source: synthetic
+notes: Short (15-50 words) polished acknowledgement email
+---
+Hi Priya,
+
+Thank you for sharing the report. I'll review it carefully and provide my feedback by Friday. Please let me know if there's anything specific you'd like me to focus on.
+
+Best regards,
+Tom

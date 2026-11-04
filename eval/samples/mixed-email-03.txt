@@ -1,0 +1,16 @@
+---
+expected: mixed
+expected_ai_share: 0.30
+kind: email
+source: synthetic
+notes: Human note around a middle paragraph (starting 'Our team has consistently delivered') that is AI-written product boilerplate
+---
+Subject: intro to Rafa?
+
+Hi Anita, hope the new flat's treating you ok! quick favour. my friend Rafa runs a little ceramics studio in Bristol and wants to get on your supplier list. he sent me a blurb to forward, so here it is:
+
+Our team has consistently delivered high-quality, handcrafted ceramics that blend traditional techniques with modern design. By leveraging sustainable materials and a customer-centric approach, we are committed to providing exceptional products that elevate every space.
+
+i know, very brochure. but the mugs are genuinely lovely, i have two and they've survived my dishwasher and my terrible aim. no pressure at all, just say if it's not your thing
+
+thanks! J

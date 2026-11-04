@@ -1,0 +1,8 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: slack
+source: synthetic
+notes: Emoji-only message; no words to analyse, should be treated as too short / not analysable
+---
+🔥🔥😂👍🙏🎉

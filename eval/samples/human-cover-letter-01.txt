@@ -1,0 +1,15 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: cover-letter
+source: synthetic
+notes: Informal, specific, unpolished cover letter from a stockroom worker; no boilerplate
+---
+Hi Marcus,
+
+Saw the post on the Brightline board about the ops coordinator job and thought, I basically do this already, just without the title. I've run the stockroom at Pell's Hardware for 4 years - ordering, rotas, the whole annoying lot. Last year I got our returns down from about 12% to under 8% by just walking round with a clipboard and asking people why stuff came back.
+
+I'm not great at fancy CVs. I'm good at fixing the thing that's broken on a Tuesday. CV attached anyway.
+
+Cheers,
+Dani Okafor

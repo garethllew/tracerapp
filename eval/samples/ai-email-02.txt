@@ -1,0 +1,19 @@
+---
+expected: ai
+expected_ai_share: 1.00
+kind: email
+source: synthetic
+notes: Polished meeting-request email with balanced sentences and generic closing
+---
+Subject: Request for a Brief Meeting
+
+Hi David,
+
+I hope you're doing well. I wanted to touch base regarding the upcoming product roadmap and explore how we can ensure alignment across teams.
+
+Would you be available for a 30-minute call sometime next week? I'd be happy to work around your schedule and can send over a brief agenda in advance so we can make the most of our time together.
+
+Thank you for your time and consideration. I truly value your perspective and look forward to connecting soon.
+
+Warm regards,
+Sarah

@@ -1,0 +1,10 @@
+---
+expected: mixed
+expected_ai_share: 0.70
+kind: slack
+source: synthetic
+notes: Very short (<15 words). Sentence 1 ('ok sounds good lol.') is human; the second sentence is AI boilerplate
+---
+ok sounds good lol.
+
+Thank you for your prompt attention to this matter.

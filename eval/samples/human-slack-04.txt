@@ -1,0 +1,10 @@
+---
+expected: human
+expected_ai_share: 0.00
+kind: slack
+source: synthetic
+notes: Casual Slack message containing a bare URL, trailing off
+---
+ok so jonah pinged me about the flaky test again. i think its the same thing as https://github.com/vercel/next.js/issues/48812 .. no wait, not exactly, theirs is about hydration. ours only fails when the clock's mocked
+
+anyway read the thread and tell me if im nuts. not urgent, can wait till after standup

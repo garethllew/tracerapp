@@ -1,0 +1,10 @@
+---
+expected: mixed
+expected_ai_share: 0.65
+kind: slack
+source: synthetic
+notes: Short (15-50 words). Paragraph 1 is human; paragraph 2 (the 'In summary' block) is an AI-generated summary pasted in
+---
+pasting the summary claude gave me of the thread, too long to read lol
+
+In summary, the team aligned on three key priorities: improving onboarding, streamlining reporting, and enhancing cross-functional collaboration. Next steps include scheduling a follow-up to ensure alignment.
