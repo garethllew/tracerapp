@@ -34,10 +34,9 @@ pub struct EngineConfig {
     // ---- document-level sanity check
     /// Score the whole text as well as the windows, but only when it has at
     /// most this many prose words (0 = never). The doc pass runs long
-    /// sequences: on 500 words it more than doubled the time (3.1 s vs 1.4 s
-    /// at 4 threads). Short texts are where the check matters most (few
-    /// windows), and up to ~70 words it's free: the single window doubles as
-    /// the doc chunk.
+    /// sequences, so it roughly doubles the time on long texts; the user
+    /// chose to accept that up to 1,000 words (2026-11-04). Up to ~70 words
+    /// it's free: the single window doubles as the doc chunk.
     pub doc_check_max_words: usize,
     /// The whole text is scored in chunks of up to this many words (~1.4
     /// tokens per word keeps a chunk inside 512 tokens).
@@ -84,7 +83,7 @@ impl Default for EngineConfig {
             window_target_sentences: 3,
             window_max_words: 70,
             window_overlap_sentences: 1,
-            doc_check_max_words: 300,
+            doc_check_max_words: 1000,
             doc_chunk_words: 300,
             disagreement_doc_score: 0.8,
             disagreement_low_share: 0.1,

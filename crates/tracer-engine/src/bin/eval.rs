@@ -245,15 +245,16 @@ fn flags(a: &Analysis) -> String {
     if f.is_empty() { String::new() } else { format!("  [{}]", f.join(", ")) }
 }
 
-/// Time analyze() on ~150/300/500-word texts built from the AI samples.
+/// Time analyze() on ~150/300/500/1000-word texts built from the AI samples.
 /// Each text is analysed 7 times after a warm-up; repeated shapes run a
 /// little faster than fresh pastes, so treat these as best-case-ish.
 fn bench(det: &dyn Detector, samples: &[Sample], cfg: &EngineConfig) -> Result<()> {
     let ai_text: String = samples.iter().filter(|s| s.expected == "ai").map(|s| s.body.as_str()).collect::<Vec<_>>().join("\n\n");
-    if ai_text.split_whitespace().count() < 500 {
+    let available = ai_text.split_whitespace().count();
+    if available < 500 {
         bail!("not enough AI sample text for a 500-word bench");
     }
-    for target in [150, 300, 500] {
+    for target in [150, 300, 500, 1000].into_iter().filter(|&t| t <= available) {
         let mut text = String::new();
         let mut n = 0;
         for word in ai_text.split_inclusive(char::is_whitespace) {

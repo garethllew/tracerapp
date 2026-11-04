@@ -338,9 +338,9 @@ mod tests {
 
     #[test]
     fn doc_check_only_up_to_its_word_limit() {
-        let short = analyze(&para(AI, 20), &Mock, &cfg()).unwrap(); // 220 words
+        let short = analyze(&para(AI, 90), &Mock, &cfg()).unwrap(); // 990 words
         assert!(short.doc_score.is_some());
-        let long = analyze(&para(AI, 40), &Mock, &cfg()).unwrap(); // 440 words
+        let long = analyze(&para(AI, 92), &Mock, &cfg()).unwrap(); // 1012 words
         assert!(long.doc_score.is_none());
         assert!(!long.disagreement);
         let mut off = cfg();

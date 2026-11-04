@@ -8,12 +8,12 @@ The engine works end to end and is inside the quality bar:
 
 - **Clear human/AI samples:** 20/20 correct.
 - **Mixed samples:** typically within ~17 points of the true AI share.
-- **Speed:** 500 words in **1.4 s on 4 threads**, under 1 s on 8.
+- **Speed:** 500 words in **1.6 s on 4 threads**, including the whole-document check.
 - **Robustness:** no panics on weird input.
 - **Parity:** Rust inference matches the Python reference to 6 decimal places.
 
-Getting there took three fixes the brief didn't anticipate (below). **One of them
-changes the brief's design (the whole-document check), and I need your OK on it.**
+Getting there took three fixes the brief didn't anticipate (below). The
+whole-document check runs for texts up to 1,000 words (your call, 2026-11-04).
 
 ## What's built
 
@@ -51,21 +51,17 @@ The INT8 model's dynamic quantisation sets each layer's scale from the whole bat
 tensor. That made a chunk's score shift depending on what else was batched with it
 (0.655 → 0.674 for the same text). Chunks now run one at a time. The result is deterministic, identical to Python, and costs under 5% in speed.
 
-## ⚠ Decision needed: the whole-document check
+## Decided: the whole-document check runs up to 1,000 words
 
-The brief asks for a document-level score on every text as a sanity check. On 500
-words it **more than doubled the time** (3.1 s vs 1.4 s on 4 threads), because it runs long
-512-token sequences. In practice it is also a weak check: any text containing an AI paragraph
-scores ~1.0 at document level (Phase 0), so it rarely tells us anything.
+The brief asks for a document-level score as a sanity check. It runs long
+512-token sequences, so it adds time. **Decision (2026-11-04): run it for texts up to 1,000
+words** (`doc_check_max_words`). Longer texts just take longer, and how much text to paste is the user's choice.
 
-**What I did (configurable):** the doc check runs only for texts up to **300 words**
-(`doc_check_max_words`).
+- **Over 1,000 words:** windows alone carry the signal. `doc_score` is `None` and there is no disagreement downgrade.
+- **Up to ~70 words:** the check is free, because the single window doubles as the doc chunk.
+- **Disagreement rule:** "doc ≥ 0.8 while < 10% of words classed AI" (or the reverse at ≤ 0.2 / > 50%). A naive "doc vs split differ" test would fire on every mixed text, because doc ≈ 1.0 whenever any AI is present (Phase 0).
 
-- **Short texts:** this is where it matters most, because there are few windows to go on. Up to ~70 words it's free: the single window doubles as the doc chunk.
-- **Longer texts:** windows carry the signal. `doc_score` is `None` and there is no disagreement downgrade.
-- **Disagreement rule:** "doc ≥ 0.8 while < 10% of words classed AI" (or the reverse at ≤ 0.2 / > 50%). A naive "doc vs split differ" test would fire on every mixed text, because doc ≈ 1.0 whenever any AI is present.
-
-The options: keep this (my recommendation); run it always and accept ~3 s on laptops for long texts; or run it after the result is shown and update confidence when it lands, which is more UI complexity.
+An earlier measurement put the doc pass at "3.1 s vs 1.4 s for 500 words". That was inflated by the batching problem (fix 3): unbatched, the doc pass costs about 0.25 s at 500 words.
 
 ## Numbers
 
@@ -76,14 +72,15 @@ The options: keep this (my recommendation); run it always and accept ~3 s on lap
 - Mixed: 5/7 within ±25 points, mean error 17 points. The two misses are the model scoring human paragraphs as AI-ish: a formal "My gran ran a bakery…" cover-letter opening (0.77) and a "Subject: re:" email opener (0.57). That's model behaviour, not pipeline.
 - French sample flagged `non-english` with Low confidence.
 
-**Latency** (median after warm-up; real pastes are ~10–20% slower):
+**Latency** (median after warm-up; real pastes are ~10–20% slower; doc check included at every size):
 
-| | 150 words (incl. doc) | 300 words | 500 words |
-|---|---|---|---|
-| 4 threads (≈ laptop) | 0.61 s | 0.82 s | **1.38 s** |
-| 8 threads | 0.41 s | 0.60 s | 0.99 s |
+| | 150 words | 300 words | 500 words | 1,000 words |
+|---|---|---|---|---|
+| 4 threads (≈ laptop) | 0.53 s | 1.05 s | **1.63 s** | 3.59 s |
+| 8 threads | 0.35 s | 0.86 s | 1.66 s | 3.70 s |
 
 Load once: ~1.0 s. Threads default to half the logical CPUs, capped at 8.
+8 threads gave no gain over 4 on long texts here. Revisit the default on a real laptop in Phase 2/3.
 
 ## Limits worth knowing
 
