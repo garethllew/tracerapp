@@ -1,0 +1,14 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: help
+source: claude-sonnet plain brand voice
+notes: help article on resetting a smart thermostat
+---
+This article explains how to reset your Hearth T2 thermostat. A reset is useful if the screen is frozen, if the device will not connect to Wi-Fi, or if you are giving the thermostat to someone else. There are two types of reset, and they do different things.
+
+A soft reset restarts the thermostat and keeps your schedules and settings. To do this, press and hold the dial for 10 seconds until the screen goes dark. Release the dial. The Hearth logo will appear in about 20 seconds, and the thermostat will return to its last state.
+
+A factory reset removes all settings, schedules and Wi-Fi details. To do this, open the Settings menu on the thermostat, choose System, then choose Factory Reset. Enter the four-digit PIN you set during installation. If you have forgotten the PIN, hold the dial for 30 seconds instead. The screen will show a progress bar, and the process takes about two minutes.
+
+After a factory reset, the thermostat starts the setup guide from the first step. You will need your Wi-Fi password and the account email you used when you bought the device. Your heating will keep running on the manual setting during the reset. If the thermostat does not start after a reset, contact support and have the serial number ready. It is printed on the back plate.

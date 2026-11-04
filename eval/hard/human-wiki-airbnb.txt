@@ -1,0 +1,10 @@
+---
+expected: human
+expected_ai_share: 0.0
+kind: encyclopedic
+source: Wikipedia, "Airbnb", revision 899398324 (2019-05-29), CC BY-SA 4.0
+notes: plain factual human prose written before LLMs; false-positive check
+---
+A‌i‌r‌b‌n‌b‌,‌ ‌I‌n‌c‌.‌, is an American online marketplace and hospitality service brokerage company based in San Francisco, California, United States. Members can use the service to arrange or offer lodging, primarily homestays, or tourism experiences. The company does not own any of the real estate listings, nor does it host events; it acts as a broker, receiving commissions from each booking.
+
+The company was conceived after its founders put an air mattress in their living room, effectively turning their apartment into a bed and breakfast, in order to offset the high cost of rent in San Francisco; AirBnb is a shortened version of its original name, AirBedandBreakfast.com.

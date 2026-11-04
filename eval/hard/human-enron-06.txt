@@ -1,0 +1,16 @@
+---
+expected: human
+expected_ai_share: 0.0
+kind: email
+source: Enron email corpus (public, 2000-2001), corbt/enron-emails row 0
+notes: genuine pre-LLM business email; subject: Re: Sagewood etc.
+---
+Jeff,
+
+You would clearly receive a commission on a deal on the sagewood.
+
+I am surprised by your request for payment on any type of project in which I might become involved with Creekside. Are you in the business of brokering properties or contacts? Is your position based on a legal or what you perceive to be an ethical issue? Did you propose we look at developing a project from scratch?
+
+I am not prepared to pay more than 2.7 for sagewood yet.
+
+Phillip

@@ -1,0 +1,10 @@
+---
+expected: human
+expected_ai_share: 0.0
+kind: encyclopedic
+source: Wikipedia, "Fitbit", revision 898404804 (2019-05-23), CC BY-SA 4.0
+notes: plain factual human prose written before LLMs; false-positive check
+---
+Fitbit, Inc. is an American company headquartered in San Francisco, California. Its products are activity trackers, wireless-enabled wearable technology devices that measure data such as the number of steps walked, heart rate, quality of sleep, steps climbed, and other personal metrics involved in fitness. Before October 2007, the company was previously named Healthy Metrics Research, Inc. Some evidence has found that the use of similar devices results in less weight loss rather than more.
+
+According to an IDC report published on December 3, 2018, Fitbit is considered the third largest wearable company in shipments as of the third quarter of 2018, behind Xiaomi and Apple.

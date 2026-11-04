@@ -1,0 +1,18 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: internal
+source: claude-sonnet plain brand voice
+notes: sprint summary posted in a team channel
+---
+Sprint 23 summary, 4 to 15 November
+
+We closed 31 of 36 planned tickets this sprint. The five open items are carried into Sprint 24 and listed at the end of this update.
+
+The checkout rewrite shipped to 20 percent of traffic on Wednesday. Conversion on the new flow is 3.1 percent against 3.0 percent on the old one, which is within normal variation. Page load time dropped from 2.4 seconds to 1.7 seconds. We plan to move to 50 percent on 20 November if error rates stay below 0.5 percent.
+
+The mobile team finished the push-notification migration. All iOS and Android devices now use the new provider, and delivery rates are 97.8 percent. The old provider contract ends on 31 December. Priya is writing the decommission checklist and will share it by Friday.
+
+Two incidents occurred. On 7 November, the search service returned empty results for 22 minutes after a bad config push. On 12 November, an expired certificate blocked the staging environment for about two hours. Both have written postmortems in the team folder. We have added a certificate expiry check to the weekly job.
+
+Carried over: invoice export bug, two analytics events, the dark-mode contrast fix and the Spanish translation review. Planning for Sprint 24 is on Monday at 10 am.

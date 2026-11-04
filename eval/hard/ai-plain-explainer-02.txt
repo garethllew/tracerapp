@@ -1,0 +1,14 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: explainer
+source: claude-sonnet plain brand voice
+notes: product about page for a payroll tool
+---
+LedgerLine is a payroll tool for companies with 5 to 200 employees in the United Kingdom. It calculates pay, tax, National Insurance and pension contributions, then files the required reports with HMRC on your behalf. You run payroll from a single screen and approve it with one click.
+
+Each pay run starts from the previous month. LedgerLine copies salaries, standing deductions and benefits forward, then asks you to confirm only what changed. New starters, leavers and overtime are entered in a short form. Before you approve, the tool lists every employee whose pay moved by more than 10 percent so you can check it.
+
+Payslips are sent to employees by email and are also available in a web portal. Employees can download up to six years of past payslips. Your accountant can be added as a read-only user at no extra cost, and every change to payroll data is logged with a name and a timestamp.
+
+Pricing is 4 pounds per employee per month, with a minimum of 40 pounds. There is no setup fee. If you are moving from another provider, the support team will import your year-to-date figures from a spreadsheet and check them against your last payslips before your first live run.

@@ -1,0 +1,16 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: help
+source: claude-sonnet plain brand voice
+notes: help article on how refunds work for a software subscription
+---
+This article explains how refunds work for Northwind Notes subscriptions. The rules depend on your plan and on how long ago you were charged.
+
+If you are on a monthly plan, you can request a full refund within 14 days of any charge. After 14 days, we do not refund the current month, but you can cancel at any time and keep access until the end of the billing period. If you are on an annual plan, you can request a full refund within 30 days of the charge. After that, we refund the unused months on a pro-rata basis, minus a fee of 10 percent.
+
+To request a refund, open Settings, select Billing and choose Request Refund. You will be asked to pick a reason from a short list. This is optional, and it does not affect the decision. Most requests are approved automatically and take effect straight away.
+
+Refunds are returned to the original payment method. Card refunds usually appear within 5 to 10 business days, depending on your bank. PayPal refunds usually arrive within 3 business days. We cannot refund to a different card or account.
+
+If you were charged after you cancelled, or if you see two charges for the same period, contact support with the invoice numbers. We review these cases manually and reply within two business days. Refunded accounts keep their notes in read-only mode for 60 days.

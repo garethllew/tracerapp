@@ -1,0 +1,10 @@
+---
+expected: human
+expected_ai_share: 0.0
+kind: encyclopedic
+source: Wikipedia, "Payroll", revision 896433348 (2019-05-10), CC BY-SA 4.0
+notes: plain factual human prose written before LLMs; false-positive check
+---
+From an accounting perspective, payroll is crucial because payroll and payroll taxes considerably affect the net income of most companies and because they are subject to laws and regulations (e.g. in the US, payroll is subject to federal, state, and local regulations).
+
+From a human resources viewpoint, the payroll department is critical because employees are sensitive to payroll errors and irregularities: Good employee morale requires payroll to be paid timely and accurately. The primary mission of the payroll department is to ensure that all employees are paid accurately and timely with the correct withholdings and deductions, and that the withholdings and deductions are remitted in a timely manner. This includes salary payments, tax withholdings, and deductions from paychecks.

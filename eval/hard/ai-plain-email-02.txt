@@ -1,0 +1,23 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: email
+source: claude-sonnet plain brand voice
+notes: account notice about a changed billing date for a cloud storage service
+---
+Subject: Your Stowly billing date is changing
+
+Hello Marcus,
+
+We are writing to tell you about a change to your Stowly billing date. From 1 December, all annual plans will renew on the first day of the month in which they were originally purchased. Your plan was bought in March, so your renewal date moves from 19 March to 1 March.
+
+This change affects the length of your next billing period. Your current plan runs until 19 March 2027. We will then charge you for a shorter period that ends on 1 March 2028, and the price is adjusted to match. The charge will be 98.40 dollars instead of 108 dollars. Your storage allowance of 2 TB stays the same.
+
+You do not need to do anything. Your saved payment method will be used as before, and we will send a receipt after each charge. If your card expires before March, you can update it in Settings under Billing.
+
+If you prefer to keep your original date, you can switch to a monthly plan at any time. Your remaining annual balance is returned as account credit and applied to future payments.
+
+For questions, reply to this email or visit the Billing section of our help centre.
+
+Regards,
+Stowly Billing

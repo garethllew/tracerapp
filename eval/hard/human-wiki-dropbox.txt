@@ -1,0 +1,10 @@
+---
+expected: human
+expected_ai_share: 0.0
+kind: encyclopedic
+source: Wikipedia, "Dropbox", revision 897941434 (2019-05-20), CC BY-SA 4.0
+notes: plain factual human prose written before LLMs; false-positive check
+---
+Dropbox is a file hosting service operated by the American company Dropbox, Inc., headquartered in San Francisco, California, that offers cloud storage, file synchronization, personal cloud, and client software. Dropbox was founded in 2007 by MIT students Drew Houston and Arash Ferdowsi as a startup company, with initial funding from seed accelerator Y Combinator.
+
+Dropbox has received praise, including the Crunchie Award in 2010 for Best Internet Application, and Macworld's 2009 Editor's Choice Award for Software. It has been ranked as one of the most valuable startups in the US and the world, with a valuation of over US$10 billion, and it has been described as one of Y Combinator's most successful investments to date. However, Dropbox has also experienced criticism and generated controversy for issues including security breaches and privacy concerns.

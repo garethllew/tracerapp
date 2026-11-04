@@ -1,0 +1,18 @@
+---
+expected: ai
+expected_ai_share: 1.0
+kind: internal
+source: claude-sonnet plain brand voice
+notes: policy change note on remote work and expenses
+---
+Update to the remote work and expenses policy, effective 1 January
+
+This note describes two changes to the policy. The full text is on the People page of the intranet.
+
+First, the home-office allowance is rising from 300 pounds to 450 pounds. It is a one-time payment for desks, chairs, monitors and similar equipment. Employees who have already claimed 300 pounds can claim the remaining 150 pounds with a receipt dated after 1 January 2025. Equipment bought with the allowance belongs to the employee after two years of service.
+
+Second, we are changing the expected office days. Teams will spend at least two days a month together in the Manchester office, replacing the current requirement of one day a week. Team leads will choose the dates at the start of each quarter and share them at least six weeks ahead. Travel to the office on these days is reimbursed at standard rates, with train tickets booked through the finance portal.
+
+Existing agreements for fully remote employees are not affected. If your contract states a fixed work location, that location stays in place.
+
+Questions can go to the People team in the hr-help channel. Managers will hold short sessions for their teams during the week of 9 December, and a recording will be posted afterwards.

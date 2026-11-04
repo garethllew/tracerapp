@@ -1,0 +1,8 @@
+---
+expected: human
+expected_ai_share: 0.0
+kind: encyclopedic
+source: Wikipedia, "Valve Anti-Cheat", revision 898299811 (2019-05-22), CC BY-SA 4.0
+notes: plain factual human prose written before LLMs; false-positive check
+---
+When the software detects a cheat on a player's system, it will ban them in the future, possibly days or weeks after the original detection. It may kick players from the game if it detects errors in their system's memory or hardware. No information such as date of detection or type of cheat detected is disclosed to the player. After the player is notified, access to online "VAC protected" servers of the game the player cheated in is permanently revoked and additional restrictions are applied to the player's Steam account.
