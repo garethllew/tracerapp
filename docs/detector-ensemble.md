@@ -27,14 +27,20 @@ sets (`eval --dump`, then `tools/model-export/sweep_rules.py`):
   read is more reliable than its 50-word read.
 - **rasbt's window scores are noise on human prose.** Its windows read 7/7 AI
   on the Netflix and Twitch leads, while its whole-text score there is 0.00.
-- **rasbt's whole-text score is ~0.00 on every multi-paragraph text except
-  Gemini** (0.85), AI or human. It reads long passages as human, so it can't
-  be the context.
-- **At paragraph level rasbt is useful when it's very sure**: ≥ 0.95 on 3/3
-  Gemini paragraphs, and on most paragraphs of the announcement and explainer
-  texts desklib misses. Only three human paragraphs in the whole set reach
-  that: Airbnb (0.998), Counter-Strike (0.997) and multi-factor
-  authentication (0.951).
+- **rasbt reads layout.** Tracer used to join a span's sentences with single
+  spaces, dropping line breaks and blank lines. desklib doesn't care (every
+  span scored identically either way), but rasbt does. On a pasted chatbot
+  answer (`ai-claude-next-steps.txt`, the real-world miss that showed this),
+  rasbt gave **0.003 with its lines joined, 0.30 with only blank lines kept,
+  and 0.97 as pasted**. Spans now keep the line breaks between sentences
+  (`text::span_text`).
+- **With layout kept, rasbt's whole-text score splits cleanly into two
+  groups.** AI reads 0.90–1.00 or ≤ 0.56; humans read 0.95–1.00 (Airbnb,
+  Counter-Strike, Payroll) or ≤ 0.20. Enron reads 0.00 throughout. Every
+  eval/samples text reads ≤ 0.01: rasbt only fires on the plain style.
+- **rasbt's paragraph scores are useful when it's very sure**: ≥ 0.95 on all
+  Gemini paragraphs and on most announcement / explainer paragraphs desklib
+  misses.
 
 ## The rule
 
@@ -44,91 +50,106 @@ Then:
 1. **Context gate.** If desklib's score for the sentence's doc chunk (the
    whole text, or the ≤ 300-word passage around it) is below **0.5**, the
    sentence's score is capped at that doc-chunk score.
-2. **Style lift.** If rasbt's score for the sentence's paragraph (the
-   paragraph group, cut into ≤ 300-word chunks) is at least **0.95**, the
-   sentence's score is raised to it. This applies whether or not the gate
-   capped it.
+2. **Style lift.** The sentence is raised to rasbt's score for its
+   **paragraph** if that is ≥ **0.95**, or to rasbt's score for its **doc
+   chunk** if that is ≥ **0.8**. This applies whether or not the gate capped
+   it.
 
 In words: **a sentence reads AI when desklib says so and desklib's read of
-the surrounding passage agrees, or when rasbt is ≥ 95% sure about its
-paragraph.**
+the surrounding passage agrees, or when rasbt is sure about its paragraph or
+the whole passage.**
 
-Confidence: a sentence whose verdict the gate or the lift flipped counts as
-undecided. Without this, a capped score like 0.07 looked decisive, and two
-missed AI texts reported "High confidence human".
+**Confidence:** a sentence counts as undecided when either its window score
+or its final score is in the ambiguous band (0.15–0.85), or when the gate or
+the lift flipped its verdict. Without this, a capped 0.002 looked decisive:
+the pasted answer and two missed AI texts reported "High confidence human".
+Now every call where the two models disagree is reported as Low or Medium
+confidence: Gemini, the pasted answer, and five of the six Wikipedia false
+positives are Low, and Dropbox is Medium.
 
-Why this rule, in data terms (hard set, sweep; the eval binary agrees):
+Thresholds in `EngineConfig`: `context_gate` 0.5, `style_lift_threshold`
+0.95, `style_doc_lift_threshold` 0.8. Setting `context_gate = 0` turns the
+gate off. desklib-only operation is `analyze()` (gate, no lift). The
+ensemble is `analyze_with(text, desklib, Some(rasbt), cfg)` /
+`models::Ensemble::analyze`.
 
-| Rule (sweep name) | Gemini | Hard AI ≥ 50% | Enron flagged | Wikipedia flagged |
+### Why this rule (sweep, hard set)
+
+First sweep, rasbt input still flattened. These rows rest on paragraph
+scores, which barely changed once layout was kept:
+
+| Rule (sweep name) | Gemini | Hard AI ≥ 50% (of 15) | Enron flagged | Wikipedia flagged |
 |---|---|---|---|---|
-| desklib only | 0% | 9/15 | 4/15 | 9/15 |
-| naive max (`max`) | 100% | 15/15 | 4/15 | 12/15 |
-| rasbt counts only at window ≥ 0.9 (`rasT0.9`) | 100% | 14/15 | 4/15 | 11/15 |
-| rasbt calibrated, logit − 2 (`rasK2.0`) | 100% | 14/15 | 4/15 | 11/15 |
-| desklib + rasbt windows only where rasbt's paragraph ≥ 0.9 (`liftG0.9`) | 100% | 13/15 | 4/15 | 9/15 |
-| max, gated by the paragraph (`max+cG@0.5`) | 100% | 13/15 | 4/15 | 7/15 |
-| desklib, gated by the paragraph (`desk+gG@0.5`) | 0% | 9/15 | 4/15 | 6/15 |
-| desklib, gated by the doc chunk (`desk+gD@0.5`) | 0% | 7/15 | **0/15** | **4/15** |
-| max, gated by the doc chunk (`max+cD@0.5`) | 100% | 10/15 | 0/15 | 4/15 |
-| **gate + lift ≥ 0.95 (`either0.95/0.5`, chosen)** | **100%** | **12/15** | **0/15** | **4/15** |
-| gate + lift ≥ 0.9 | 100% | 12/15 | 0/15 | 5/15 |
-| gate + lift ≥ 0.97 | 100% | 11/15 | 0/15 | 4/15 |
-| gate + lift ≥ 0.98 | 100% | 10/15 | 0/15 | 4/15 |
-| gate + lift ≥ 0.99 | 65% | 9/15 | 0/15 | 4/15 |
-| gate at 0.4 + lift ≥ 0.95 | 100% | 12/15 | 0/15 | 5/15 |
+| desklib only | 0% | 9 | 4/15 | 9/15 |
+| naive max (`max`) | 100% | 15 | 4/15 | 12/15 |
+| rasbt counts only at window ≥ 0.9 (`rasT0.9`) | 100% | 14 | 4/15 | 11/15 |
+| rasbt calibrated, logit − 2 (`rasK2.0`) | 100% | 14 | 4/15 | 11/15 |
+| rasbt windows only where rasbt's paragraph ≥ 0.9 (`liftG0.9`) | 100% | 13 | 4/15 | 9/15 |
+| max, gated by the paragraph (`max+cG@0.5`) | 100% | 13 | 4/15 | 7/15 |
+| desklib, gated by the doc chunk (`desk+gD@0.5`) | 0% | 7 | 0/15 | 4/15 |
+| gate + paragraph lift ≥ 0.95 (`either0.95/0.5`) | 100% | 12 | 0/15 | 4/15 |
+| gate + paragraph lift ≥ 0.9 | 100% | 12 | 0/15 | 5/15 |
+| gate + paragraph lift ≥ 0.97 | 100% | 11 | 0/15 | 4/15 |
 
 - Gating on the **paragraph** never fixes Enron: those emails' short
   paragraphs read AI too. Only the longer **doc-chunk** read separates them.
-- Every way of letting rasbt's **windows** count (threshold, calibration,
-  lift) keeps Wikipedia at 9–12/15. Only its paragraph score is safe to use,
-  and only when it's very high.
-- The lift threshold is a narrow optimum. 0.9 lets Counter-Strike through
-  (79% AI), and 0.97 drops a hard AI text. Both neighbours are worse, so
-  0.95 is the data's choice, not a round number.
+- Every way of letting rasbt's **windows** count keeps Wikipedia at
+  9–12/15. Only its paragraph and whole-text scores are safe to use.
 
-Both thresholds are in `EngineConfig` (`context_gate`, `style_lift_threshold`).
-Setting `context_gate = 0` turns the gate off. Without a style detector there
-is no lift, so desklib-only operation is `analyze()` and the ensemble is
-`analyze_with(text, desklib, Some(rasbt), cfg)` / `models::Ensemble::analyze`.
+Second sweep, layout kept, with the pasted answer added (16 hard AI texts):
+
+| Rule | Hard AI ≥ 50% (of 16) | Enron flagged | Wikipedia flagged |
+|---|---|---|---|
+| gate + paragraph lift ≥ 0.95 (rule before this fix) | 12 (pasted answer: 15%) | 0/15 | 4/15 |
+| + whole-text lift ≥ 0.99 | 12 | 0/15 | 6/15 |
+| + whole-text lift ≥ 0.95–0.98 | 15 | 0/15 | 6/15 |
+| **+ whole-text lift ≥ 0.5–0.9 (chosen: 0.8)** | **16** | **0/15** | **6/15** |
+
+The whole-text lift costs two Wikipedia false positives (Airbnb and
+Counter-Strike, already 43–46% flagged before) and catches four more AI
+texts, including the pasted chatbot answer. You chose that trade
+(2026-11-04). Any threshold from 0.21 to 0.89 gives the same result on these
+sets; 0.8 leaves margin on both sides.
 
 ## Results (eval binary)
 
-### eval/hard
+### eval/hard (16 AI, 30 human)
 
-| | Gemini | Hard AI ≥ 50% | Enron flagged | Wikipedia flagged |
-|---|---|---|---|---|
-| desklib only (before) | 0% | 9/15 | 4/15 (01, 03, 06, 14) | 9/15 |
-| naive max (WIP) | 100% | 15/15 | 4/15 (01, 03, 06, 14) | 12/15 |
-| desklib + gate (no rasbt) | 0% | 7/15 | 0/15 | 4/15 |
-| **new rule** | **100%** | **12/15** | **0/15** | **4/15** |
-| target | ≥ 50% | ≥ 12/15 | ≤ 1/15 | ≤ 9/15 |
+| | Gemini | Pasted chatbot answer | Hard AI ≥ 50% | Enron flagged | Wikipedia flagged |
+|---|---|---|---|---|---|
+| desklib only (before) | 0% | 0% | 9/16 | 4/15 (01, 03, 06, 14) | 9/15 |
+| naive max (WIP) | 100% | 29% | 15/16 | 4/15 (01, 03, 06, 14) | 12/15 |
+| desklib + gate (no rasbt) | 0% | 0% | 7/16 | 0/15 | 4/15 |
+| **new rule** | **100%** | **100%** | **16/16** | **0/15** | **6/15** |
+| target | ≥ 50% | | ≥ 12/15 | ≤ 1/15 | ≤ 9/15 |
 
 Per sample (AI %):
 
 | Sample | desklib | max | desklib + gate | **new** | desklib doc |
 |---|---:|---:|---:|---:|---:|
+| ai-claude-next-steps (pasted answer) | 0 | 29 | 0 | **100** | 0.00 |
 | ai-faceit-gemini | 0 | 100 | 0 | **100** | 0.06 |
-| ai-plain-announcement-01 | 81 | 100 | 0 | **75** | 0.32 |
-| ai-plain-announcement-02 | 38 | 61 | 38 | **61** | 0.88 |
+| ai-plain-announcement-01 | 81 | 100 | 0 | **100** | 0.32 |
+| ai-plain-announcement-02 | 38 | 61 | 38 | **100** | 0.88 |
 | ai-plain-email-01 | 78 | 78 | 78 | **78** | 0.98 |
 | ai-plain-email-02 | 100 | 100 | 100 | **100** | 1.00 |
-| ai-plain-explainer-01 | 78 | 100 | 0 | **22** ✗ | 0.07 |
-| ai-plain-explainer-02 | 49 | 100 | 0 | **75** | 0.06 |
-| ai-plain-explainer-03 | 29 | 95 | 0 | **53** | 0.13 |
-| ai-plain-help-01 | 94 | 100 | 94 | **94** | 1.00 |
+| ai-plain-explainer-01 | 78 | 100 | 0 | **100** | 0.07 |
+| ai-plain-explainer-02 | 49 | 100 | 0 | **100** | 0.06 |
+| ai-plain-explainer-03 | 29 | 95 | 0 | **100** | 0.13 |
+| ai-plain-help-01 | 94 | 100 | 94 | **100** | 1.00 |
 | ai-plain-help-02 | 83 | 83 | 83 | **83** | 0.99 |
-| ai-plain-help-03 | 80 | 80 | 80 | **80** | 0.98 |
-| ai-plain-internal-01 | 19 | 64 | 0 | **20** ✗ | 0.13 |
-| ai-plain-internal-02 | 30 | 85 | 30 | **30** ✗ | 0.78 |
-| ai-plain-release-notes-01 | 58 | 73 | 58 | **73** | 0.55 |
+| ai-plain-help-03 | 80 | 80 | 80 | **100** | 0.98 |
+| ai-plain-internal-01 | 19 | 64 | 0 | **100** | 0.13 |
+| ai-plain-internal-02 | 30 | 85 | 30 | **100** | 0.78 |
+| ai-plain-release-notes-01 | 58 | 73 | 58 | **100** | 0.55 |
 | ai-plain-release-notes-02 | 96 | 96 | 96 | **96** | 0.56 |
 | human-enron-01 | 83 | 83 | 0 | **0** | 0.23 |
 | human-enron-03 | 68 | 68 | 0 | **0** | 0.08 |
 | human-enron-06 | 100 | 100 | 0 | **0** | 0.31 |
 | human-enron-14 | 77 | 77 | 0 | **0** | 0.37 |
 | other 11 Enron | 0–37 | 0–37 | 0 | **0** | 0.00–0.44 |
-| human-wiki-airbnb | 0 | 100 | 0 | **43** | 0.09 |
-| human-wiki-counter-strike-go | 67 | 85 | 0 | **46** | 0.10 |
+| human-wiki-airbnb | 0 | 100 | 0 | **100** ✗ | 0.09 |
+| human-wiki-counter-strike-go | 67 | 85 | 0 | **100** ✗ | 0.10 |
 | human-wiki-dropbox | 100 | 100 | 100 | **100** ✗ | 0.89 |
 | human-wiki-elo-rating-system | 79 | 79 | 79 | **79** ✗ | 0.88 |
 | human-wiki-esports | 20 | 79 | 0 | **0** | 0.02 |
@@ -155,89 +176,70 @@ Per sample (AI %):
 Mixed samples (expected → desklib / new): cover-letter-01 60 → 100 / 100,
 email-01 40 → 80 / 80, email-02 30 → 46 / **36**, email-03 30 → 31 / 31,
 linkedin-01 55 → 72 / 72, slack-02 65 → 67 / 67, slack-03 30 → 32 / 32.
-The gate didn't suppress the AI parts of mixed texts. Where the AI is
-chatbot style, it dominates desklib's read of the passage (doc 0.79–1.00).
 
 ### Latency (`eval --bench --threads 4`, median of 7, AI sample text)
 
 | Words | desklib only (before) | desklib + gate | **new rule** | naive max |
 |---|---|---|---|---|
-| 153 | 0.64 s | 0.64 s | **0.96 s** | 1.12 s |
-| 307 | 1.48 s | 1.48 s | **1.97 s** | 2.31 s |
-| **508** | **2.43 s** | **2.52 s** | **3.23 s** | **3.76 s** |
-| 996 | 5.25 s | 5.48 s | **7.03 s** | 7.85 s |
-| 2,030 (`--samples eval/hard`) | 5.62 s (no doc pass) | 10.31 s | **12.80 s** | – |
+| 153 | 0.64 s | 0.64 s | **1.08 s** | 1.12 s |
+| 307 | 1.48 s | 1.48 s | **2.24 s** | 2.31 s |
+| **508** | **2.43 s** | **2.52 s** | **3.49 s** | **3.76 s** |
+| 996 | 5.25 s | 5.48 s | **7.95 s** | 7.85 s |
+| ~2,030 (`--samples eval/hard`) | 5.62 s (no doc pass) | 10.31 s | **15.20 s** | – |
 
-At 500 words the new rule costs +0.8 s (+33%) over desklib alone: rasbt
-scores each paragraph once. That's cheaper than the naive max, which ran
-rasbt on every window. Up to 1,000 words the gate is free, because the doc
-pass already ran. **Above 1,000 words the gate forces the doc pass**, which
-used to be skipped there, so long texts take about twice as long (2,030
-words: 5.6 s → 10.3 s with desklib, 12.8 s with the new rule).
+At 500 words the new rule costs +1.1 s (+44%) over desklib alone. rasbt
+scores each paragraph and each ≤ 300-word doc chunk once. Up to 1,000 words
+the gate is free, because the doc pass already ran. **Above 1,000 words the
+gate forces the doc pass**, which used to be skipped there, so long texts
+take roughly 2.5× as long (2,030 words: 5.6 s → 15.2 s).
 
 ## Verification
 
-- Real pipeline vs sweep: the eval binary's AI% matches the sweep's
-  `either0.95/0.5` on every sample of both sets. The `--no-gate` baselines
-  reproduce the earlier desklib and max runs exactly.
-- `cargo test -p tracer-engine --lib`: 57 passed. New mock-detector tests:
-  the gate caps (and lowers confidence), passes when the passage agrees, is
-  local to each doc chunk; the lift rescues a paragraph, overrides the gate,
-  does nothing below the threshold, scores paragraphs only (never windows),
-  and a wrong-length style output is an error.
+- Real pipeline vs sweep: the eval binary's AI% matches the sweep on every
+  sample. The `--no-gate` baselines reproduce the earlier desklib and max
+  runs, and keeping layout changed no desklib span score.
+- `cargo test -p tracer-engine --lib`: 60 passed. Mock-detector tests cover:
+  - **gate:** caps, lowers confidence, passes when the passage agrees, stays
+    local to each doc chunk;
+  - **paragraph lift:** rescues a paragraph, overrides the gate, does nothing
+    below the threshold, scores paragraphs and doc chunks but never windows;
+  - **whole-text lift:** catches a text whose paragraphs read human;
+  - **confidence:** capping doesn't make undecided windows look decisive;
+  - **line breaks:** `span_text` keeps them;
+  - **errors:** a wrong-length style output is an error.
 - `cargo test --release -p tracer-engine --lib -- --ignored`: 3 passed,
-  including a new real-model test (Gemini ≥ 50%; Enron 01/03/06/14 < 50%).
-  The ignored tests now find models via `models::dev_model_dir()`
-  (`$TRACER_MODEL_DIR`, then the app's model folder, then
-  `tools/model-export/work/onnx`).
-- rasbt export parity (`export_rasbt.py --skip-export`): tokenizer 287/287
-  identical; FP32 and bf16w both max |dP| 0.0000, 0 flips. The models
-  already in `%APPDATA%\com.tracer.app\models` were used; the rasbt file
-  there is byte-identical to the export.
-- `src-tauri` still compiles against the changed engine (`cargo check -p
-  tracer`, checked with a placeholder `dist/`).
-
-## Remaining weaknesses
-
-- **Small sets, tuned thresholds.** Both thresholds were picked on 30 hard
-  texts and 20 samples. The hard-AI target (12/15) is met at its edge:
-  explainer-03 reads 53%. Counter-Strike (46%) and Airbnb (43%) sit just
-  under the human line. Expect some movement on new data.
-- **Partial false highlights on human text.** rasbt is ≥ 95% sure about one
-  human paragraph each in Airbnb, Counter-Strike and multi-factor
-  authentication, so those paragraphs show as AI (43%, 46%, 16% of words).
-  Counter-Strike even reports High confidence for its 46%, because desklib's
-  windows agreed with the lifted paragraph. An untested idea: let rasbt lift
-  only when its confident paragraphs make up ≥ 50% of the text. On these
-  sets that would zero these three without losing a hard-AI hit, but it
-  would also stop rasbt from flagging a single AI paragraph in a mixed text.
-- **4/15 Wikipedia leads still read AI** (Dropbox, Elo, Payroll, Spotify).
-  desklib reads them as AI as whole texts too (0.71–0.93), so no rule over
-  these two models removes them without cutting real AI. Encyclopedic prose
-  remains the hardest false-positive case.
-- **Recall lost to the gate.** AI text that desklib only catches at window
-  level (explainer-01 78% → 22%, internal-01) is now missed unless rasbt is
-  sure. The same holds for a mixed text whose AI part doesn't lift desklib's
-  passage score to 0.5, e.g. one plain-style AI paragraph in a human email.
-  The eval set has no such sample.
-- **rasbt can't help on long single paragraphs.** It reads long passages as
-  human, and paragraph groups are only cut at 300 words. A 250-word
-  single-paragraph brand-voice text depends entirely on desklib. Gemini
-  works because it has three paragraphs.
-- **Latency above 1,000 words** roughly doubles (see the table). If that's
-  unacceptable, the trade is to skip the gate there and accept desklib's
-  window false positives on long texts.
-- **Memory.** The app now loads both models for a check (desklib ~1.5 GB,
-  plus rasbt), still unloading them 60 s after the last check.
+  including a real-model test (Gemini ≥ 50%; Enron 01/03/06/14 < 50%).
+- `cargo test -p tracer --lib` (app): 8 passed.
+- rasbt export parity: tokenizer 287/287 identical; FP32 and bf16w max |dP|
+  0.0000.
 
 ## App wiring
 
 `src-tauri` loads `models::Ensemble` and calls `Ensemble::analyze`. The
 model counts as installed only when all four files are present. The
 first-run download fetches desklib from the `model-v1` release and rasbt
-from the new `model-v2` release (pinned sizes and SHA-256s in
-`download.rs`). An install that already has model-v1 verifies those files
-and only fetches the ~305 MB of model-v2.
+from the `model-v2` release (pinned sizes and SHA-256s in `download.rs`).
+An install that already has model-v1 only fetches the ~305 MB of model-v2.
+
+## Remaining weaknesses
+
+- **6/15 Wikipedia leads read AI.** Four of them (Dropbox, Elo, Payroll,
+  Spotify) desklib reads as AI as whole texts; two (Airbnb, Counter-Strike)
+  rasbt reads as AI as whole texts. Five report Low confidence and Dropbox
+  Medium. Encyclopedic prose is the hardest false-positive case for both
+  models.
+- **Small sets, tuned thresholds.** 46 hard texts and 20 samples. rasbt's
+  whole-text scores split into two groups here, but nothing guarantees
+  that on new text.
+- **Recall that depends on rasbt.** AI that desklib only catches window by
+  window is now caught only if rasbt reads it as AI. The same holds for a
+  mixed text whose AI part doesn't lift desklib's passage score to 0.5, e.g.
+  one plain-style AI paragraph in a human email. No eval sample covers that.
+- **rasbt depends on layout.** A text pasted without its line breaks (some
+  apps flatten them) loses most of rasbt's signal.
+- **Latency** is +44% at 500 words and ~2.5× above 1,000 words.
+- **Memory.** The app loads both models for a check (desklib ~1.5 GB, plus
+  rasbt) and unloads them 60 s after the last check.
 
 ## Reproduce
 

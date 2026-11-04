@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use anyhow::{bail, Context, Result};
-use tracer_engine::text::{paragraph_ids, segment};
+use tracer_engine::text::{paragraph_ids, segment, span_text};
 use tracer_engine::window::{build_doc_chunks, build_grouped_windows, build_groups};
 use tracer_engine::window::build_group_chunks;
 use tracer_engine::{analyze_with, models, Analysis, Detector, DetectorOptions, EngineConfig, Gate, MaxEnsemble, OnnxDetector, PieceKind};
@@ -341,7 +341,7 @@ fn dump(det: &dyn Detector, samples: &[Sample], cfg: &EngineConfig, path: &Path)
         spans.extend(build_grouped_windows(&sw, &groups, cfg).into_iter().map(|r| ("win", r)));
         spans.extend(build_group_chunks(&sw, &groups, cfg).into_iter().map(|r| ("group", r)));
         spans.extend(build_doc_chunks(&sw, cfg).into_iter().map(|r| ("doc", r)));
-        let texts: Vec<String> = spans.iter().map(|(_, r)| prose[r.clone()].iter().map(|&i| pieces[i].model_text.as_str()).collect::<Vec<_>>().join(" ")).collect();
+        let texts: Vec<String> = spans.iter().map(|(_, r)| span_text(&s.body, &pieces, &prose[r.clone()])).collect();
         let probs = det.score(&texts)?;
         let sents = sw.iter().map(|w| w.to_string()).collect::<Vec<_>>().join(",");
         writeln!(out, "{}\t{}\t{}\tsent\t0\t{}\t{}\t{sents}", s.name, s.expected, s.expected_share, sw.len(), sw.iter().sum::<usize>())?;

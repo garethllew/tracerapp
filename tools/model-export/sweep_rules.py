@@ -11,9 +11,11 @@ AI share = word-weighted share of sentences >= 0.5) under each rule, so a rule
 can be chosen on data before it goes into the engine. The final numbers come
 from the real pipeline (eval binary), not from this script.
 
-Chosen (2026-11-04): either0.95/0.5, i.e. the context gate + style lift in
+Chosen (2026-11-04): eDoc0.8/p0.95, i.e. the context gate + style lift in
 tracer-engine's analyze_with (EngineConfig.context_gate = 0.5,
-style_lift_threshold = 0.95). The engine applies it per sentence instead of
+style_lift_threshold = 0.95, style_doc_lift_threshold = 0.8). Dumps must come
+from an eval binary that keeps line breaks in model input (text::span_text):
+rasbt's whole-text score depends on them. The engine applies it per sentence instead of
 per window (each sentence has exactly one doc chunk and one paragraph chunk);
 on eval/hard and eval/samples the eval binary reproduces this script's AI%
 for every sample. Results: docs/detector-ensemble.md.
@@ -176,8 +178,30 @@ def either_rule(sd, sr, tr, td, use_win=False):
     return ai_share(sd["sw"], out)
 
 
+def either_doc_rule(sd, sr, tr, td, tdoc, tgate=None):
+    """either_rule, plus: a window is also lifted to rasbt's doc-chunk score
+    when that is >= tdoc (rasbt reads the whole passage as AI). With tgate,
+    rasbt's doc chunk >= tgate also opens desklib's gate."""
+    out = {}
+    for k, d in spans(sd, "win").items():
+        a, b = k
+        dd, rg, rd = doc_of(sd, a, b), group_of(sr, a, b), doc_of(sr, a, b)
+        open_ = dd >= td or (tgate is not None and rd >= tgate)
+        w = d if open_ else min(d, dd)
+        if rg >= tr:
+            w = max(w, rg)
+        if rd >= tdoc:
+            w = max(w, rd)
+        out[k] = w
+    return ai_share(sd["sw"], out)
+
+
 def make_rules(desk, ras):
     rules = {}
+    for tdoc in (0.5, 0.7, 0.8, 0.9, 0.95, 0.97, 0.98, 0.99, 0.995, 2):
+        for tr in (0.95, 2):
+            rules[f"eDoc{tdoc}/p{tr}"] = lambda sd, tr=tr, tdoc=tdoc: either_doc_rule(sd, ras[sd["name"]], tr, 0.5, tdoc)
+            rules[f"eDoc{tdoc}/p{tr}/g.5"] = lambda sd, tr=tr, tdoc=tdoc: either_doc_rule(sd, ras[sd["name"]], tr, 0.5, tdoc, 0.5)
     for tr in (0.9, 0.95, 0.97, 0.98, 0.99, 0.995):
         for td in (0.4, 0.5):
             rules[f"either{tr}/{td}"] = lambda sd, tr=tr, td=td: either_rule(sd, ras[sd["name"]], tr, td)

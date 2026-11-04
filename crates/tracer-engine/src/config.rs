@@ -64,6 +64,13 @@ pub struct EngineConfig {
     /// only its confident paragraph-level reads are trustworthy: its windows
     /// fire on human prose, and 0.9 already let a Wikipedia text through.
     pub style_lift_threshold: f32,
+    /// The same for the style score of a sentence's doc chunk (the whole
+    /// text, or its `doc_chunk_words` passage). rasbt's whole-text read
+    /// catches plain AI answers whose paragraphs each read human (a pasted
+    /// chatbot answer: 0.97 whole, paragraphs 0.00-0.12). On the eval sets
+    /// it is bimodal (AI 0.90-1.00 or <= 0.56; human 0.95-1.00 or <= 0.20),
+    /// so 0.8 sits in the gap. Lower = more AI caught, more humans accused.
+    pub style_doc_lift_threshold: f32,
 
     // ---- classification + confidence
     /// A sentence counts as AI when its P(AI) is at or above this.
@@ -110,6 +117,7 @@ impl Default for EngineConfig {
             disagreement_high_share: 0.5,
             context_gate: 0.5,
             style_lift_threshold: 0.95,
+            style_doc_lift_threshold: 0.8,
             ai_threshold: 0.5,
             ambiguous_low: 0.15,
             ambiguous_high: 0.85,
