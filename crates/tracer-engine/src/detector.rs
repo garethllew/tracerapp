@@ -144,13 +144,11 @@ impl Detector for OnnxDetector {
 
 /// Several detectors as one: a chunk's P(AI) is the MAX over members.
 ///
-/// Tracer pairs specialists. desklib (DeBERTa-v3-large, RAID) catches classic
-/// chatbot style but scored plain brand-voice AI text as human (a Gemini text:
-/// 0.06). rasbt's ModernBERT catches that style but misses classic chatbot
-/// text. Either one flagging is the signal, so max, not mean: a mean parked
-/// classic AI at ~0.5. On eval/hard + eval/samples: classic AI 12/12, plain
-/// AI 15/15, pre-LLM emails falsely flagged 0/15 (tools/model-export/
-/// compare_models.py).
+/// **Baseline only, not shipped** (eval `--model max`). Max of desklib and
+/// rasbt looked right on whole texts, but at Tracer's ~50-word windows rasbt
+/// fires on human prose: Wikipedia leads flagged 12/15 vs desklib's 9/15.
+/// The shipped combination is `analyze_with` (context gate + style lift),
+/// see docs/detector-ensemble.md.
 pub struct MaxEnsemble {
     members: Vec<Box<dyn Detector>>,
 }
@@ -227,7 +225,7 @@ mod tests {
     #[test]
     #[ignore]
     fn load_drop_load_again() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tools/model-export/work/onnx");
+        let dir = crate::models::dev_model_dir();
         let (m, t) = (dir.join("tracer-int8.onnx"), dir.join("tokenizer.json"));
         let a = OnnxDetector::load(&m, &t, &DetectorOptions::default()).unwrap();
         let p1 = a.score(&["hello there, see you at three".to_string()]).unwrap()[0];
@@ -242,7 +240,7 @@ mod tests {
     #[test]
     #[ignore]
     fn scores_dont_depend_on_neighbouring_chunks() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tools/model-export/work/onnx");
+        let dir = crate::models::dev_model_dir();
         let det = OnnxDetector::load(&dir.join("tracer-int8.onnx"), &dir.join("tokenizer.json"), &DetectorOptions::default()).unwrap();
         let chunks: Vec<String> = [
             "lol ok see you at 3",

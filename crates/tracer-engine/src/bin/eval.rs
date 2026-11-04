@@ -7,8 +7,12 @@
 //!   cargo run --release --bin eval -- --dump FILE      # per-span scores (windows, paragraph groups, doc
 //!                                                      #   chunks) as TSV, for offline rule sweeps
 //!
-//! Options: --samples DIR  --model-dir DIR  --model ensemble|FILE (default ensemble = desklib + rasbt, max)
-//!          --threads N  --overlap N  --no-doc
+//! Options: --samples DIR  --model-dir DIR  --model ensemble|max|FILE
+//!            ensemble (default): desklib + rasbt, context gate + style lift (analyze_with)
+//!            max: naive max of both per window (the old WIP baseline)
+//!            FILE: one model, e.g. tracer-int8.onnx (desklib only)
+//!          --no-gate  (context gate off: desklib only / max behave as before the ensemble rule)
+//!          --threads N  --overlap N  --no-doc (no doc pass; implies --no-gate)
 //!          --batch N  --budget TOKENS   (batching changes INT8 scores; see DetectorOptions)
 //!
 //! The model dir defaults to $TRACER_MODEL_DIR, then the app's model folder
@@ -20,7 +24,8 @@ use std::time::Instant;
 use anyhow::{bail, Context, Result};
 use tracer_engine::text::{paragraph_ids, segment};
 use tracer_engine::window::{build_doc_chunks, build_grouped_windows, build_groups};
-use tracer_engine::{analyze, models, Analysis, Detector, DetectorOptions, EngineConfig, Gate, OnnxDetector, PieceKind};
+use tracer_engine::window::build_group_chunks;
+use tracer_engine::{analyze_with, models, Analysis, Detector, DetectorOptions, EngineConfig, Gate, MaxEnsemble, OnnxDetector, PieceKind};
 
 const ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
 
@@ -32,6 +37,7 @@ struct Args {
     batch: usize,
     overlap: Option<usize>,
     no_doc: bool,
+    no_gate: bool,
     budget: Option<usize>,
     bench: bool,
     raw: bool,
@@ -42,12 +48,13 @@ struct Args {
 fn parse_args() -> Result<Args> {
     let mut a = Args {
         samples: Path::new(ROOT).join("eval/samples"),
-        model_dir: default_model_dir(),
+        model_dir: models::dev_model_dir(),
         model: "ensemble".into(),
         threads: None,
         batch: DetectorOptions::default().batch_size,
         overlap: None,
         no_doc: false,
+        no_gate: false,
         budget: None,
         bench: false,
         raw: false,
@@ -65,6 +72,7 @@ fn parse_args() -> Result<Args> {
             "--batch" => a.batch = val()?.parse()?,
             "--overlap" => a.overlap = Some(val()?.parse()?),
             "--no-doc" => a.no_doc = true,
+            "--no-gate" => a.no_gate = true,
             "--budget" => a.budget = Some(val()?.parse()?),
             "--bench" => a.bench = true,
             "--raw" => a.raw = true,
@@ -78,19 +86,6 @@ fn parse_args() -> Result<Args> {
         }
     }
     Ok(a)
-}
-
-fn default_model_dir() -> PathBuf {
-    if let Ok(d) = std::env::var("TRACER_MODEL_DIR") {
-        return d.into();
-    }
-    if let Ok(appdata) = std::env::var("APPDATA") {
-        let d = Path::new(&appdata).join("com.tracer.app").join("models");
-        if models::complete(&d) {
-            return d;
-        }
-    }
-    Path::new(ROOT).join("tools/model-export/work/onnx")
 }
 
 struct Sample {
@@ -148,17 +143,26 @@ fn main() -> Result<()> {
     }
     if args.no_doc {
         cfg.doc_check_max_words = 0;
+        cfg.context_gate = 0.0;
+    }
+    if args.no_gate {
+        cfg.context_gate = 0.0;
     }
     let mut opts = DetectorOptions { intra_threads: args.threads, batch_size: args.batch, ..Default::default() };
     if let Some(b) = args.budget {
         opts.max_batch_tokens = b;
     }
     let t = Instant::now();
-    let det: Box<dyn Detector> = if args.model == "ensemble" {
+    let (det, style): (Box<dyn Detector>, Option<Box<dyn Detector>>) = if args.model == "ensemble" || args.model == "max" {
         if !models::complete(&args.model_dir) {
             bail!("model set incomplete in {} (need {:?}; run tools/model-export, or pass --model-dir)", args.model_dir.display(), models::ALL_FILES);
         }
-        Box::new(models::load_ensemble(&args.model_dir, &opts)?)
+        let e = models::load_ensemble(&args.model_dir, &opts)?;
+        if args.model == "max" {
+            (Box::new(MaxEnsemble::new(vec![Box::new(e.desklib), Box::new(e.style)])), None)
+        } else {
+            (Box::new(e.desklib), Some(Box::new(e.style)))
+        }
     } else {
         // A single model, e.g. --model tracer-int8.onnx or --model rasbt-bf16w.onnx.
         let model = args.model_dir.join(&args.model);
@@ -166,11 +170,19 @@ fn main() -> Result<()> {
         if !model.exists() {
             bail!("model not found at {}", model.display());
         }
-        Box::new(OnnxDetector::load(&model, &args.model_dir.join(tok), &opts)?)
+        (Box::new(OnnxDetector::load(&model, &args.model_dir.join(tok), &opts)?), None)
     };
     let det = det.as_ref();
+    let style = style.as_deref();
     let threads = args.threads.unwrap_or_else(tracer_engine::detector::default_threads);
-    println!("model {} | {} threads | batch {} | loaded in {:.2}s\n", args.model, threads, args.batch, t.elapsed().as_secs_f32());
+    println!(
+        "model {} | gate {} | {} threads | batch {} | loaded in {:.2}s\n",
+        args.model,
+        if cfg.context_gate > 0.0 { format!("{}", cfg.context_gate) } else { "off".into() },
+        threads,
+        args.batch,
+        t.elapsed().as_secs_f32()
+    );
 
     let samples = load_samples(&args.samples)?;
     if args.raw {
@@ -185,17 +197,20 @@ fn main() -> Result<()> {
         return Ok(());
     }
     if let Some(path) = &args.dump {
+        if style.is_some() {
+            bail!("--dump scores one model at a time: pass --model FILE");
+        }
         return dump(det, &samples, &cfg, path);
     }
     if args.bench {
-        return bench(det, &samples, &cfg);
+        return bench(det, style, &samples, &cfg);
     }
 
     println!("{:<34} {:>6} {:>4} {:>5} {:>8} {:>5} {:>5} {:>6} {:>7}  result", "sample", "exp", "exp%", "words", "gate", "AI%", "doc", "conf", "ms");
     let (mut ok_clear, mut n_clear, mut mixed_err, mut n_mixed, mut gated) = (0, 0, 0f32, 0, 0);
     for s in &samples {
         let t = Instant::now();
-        let a = analyze(&s.body, det, &cfg)?;
+        let a = analyze_with(&s.body, det, style, &cfg)?;
         let ms = t.elapsed().as_secs_f32() * 1000.0;
         let verdict = verdict(s, &a);
         match (&a.gate, s.expected.as_str()) {
@@ -264,16 +279,16 @@ fn flags(a: &Analysis) -> String {
     if f.is_empty() { String::new() } else { format!("  [{}]", f.join(", ")) }
 }
 
-/// Time analyze() on ~150/300/500/1000-word texts built from the AI samples.
+/// Time analyze() on ~150/300/500/1000/2000-word texts built from the AI samples.
 /// Each text is analysed 7 times after a warm-up; repeated shapes run a
 /// little faster than fresh pastes, so treat these as best-case-ish.
-fn bench(det: &dyn Detector, samples: &[Sample], cfg: &EngineConfig) -> Result<()> {
+fn bench(det: &dyn Detector, style: Option<&dyn Detector>, samples: &[Sample], cfg: &EngineConfig) -> Result<()> {
     let ai_text: String = samples.iter().filter(|s| s.expected == "ai").map(|s| s.body.as_str()).collect::<Vec<_>>().join("\n\n");
     let available = ai_text.split_whitespace().count();
     if available < 500 {
         bail!("not enough AI sample text for a 500-word bench");
     }
-    for target in [150, 300, 500, 1000].into_iter().filter(|&t| t <= available) {
+    for target in [150, 300, 500, 1000, 2000].into_iter().filter(|&t| t <= available) {
         let mut text = String::new();
         let mut n = 0;
         for word in ai_text.split_inclusive(char::is_whitespace) {
@@ -283,11 +298,11 @@ fn bench(det: &dyn Detector, samples: &[Sample], cfg: &EngineConfig) -> Result<(
             n += (!word.trim().is_empty()) as usize;
             text.push_str(word);
         }
-        let a = analyze(&text, det, cfg)?; // warm-up
+        let a = analyze_with(&text, det, style, cfg)?; // warm-up
         let mut times = Vec::new();
         for _ in 0..7 {
             let t = Instant::now();
-            analyze(&text, det, cfg)?;
+            analyze_with(&text, det, style, cfg)?;
             times.push(t.elapsed().as_secs_f32());
         }
         times.sort_by(f32::total_cmp);
@@ -324,9 +339,7 @@ fn dump(det: &dyn Detector, samples: &[Sample], cfg: &EngineConfig, path: &Path)
         let groups = build_groups(&sw, &sp, cfg);
         let mut spans: Vec<(&str, std::ops::Range<usize>)> = Vec::new();
         spans.extend(build_grouped_windows(&sw, &groups, cfg).into_iter().map(|r| ("win", r)));
-        for g in &groups {
-            spans.extend(build_doc_chunks(&sw[g.clone()], cfg).into_iter().map(|r| ("group", g.start + r.start..g.start + r.end)));
-        }
+        spans.extend(build_group_chunks(&sw, &groups, cfg).into_iter().map(|r| ("group", r)));
         spans.extend(build_doc_chunks(&sw, cfg).into_iter().map(|r| ("doc", r)));
         let texts: Vec<String> = spans.iter().map(|(_, r)| prose[r.clone()].iter().map(|&i| pieces[i].model_text.as_str()).collect::<Vec<_>>().join(" ")).collect();
         let probs = det.score(&texts)?;

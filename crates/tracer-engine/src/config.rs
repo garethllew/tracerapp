@@ -37,6 +37,8 @@ pub struct EngineConfig {
     /// sequences, so it roughly doubles the time on long texts; the user
     /// chose to accept that up to 1,000 words (2026-11-04). Up to ~70 words
     /// it's free: the single window doubles as the doc chunk.
+    /// **Ignored while `context_gate` is on**: the gate needs the doc chunks,
+    /// so they're scored at any length.
     pub doc_check_max_words: usize,
     /// The whole text is scored in chunks of up to this many words (~1.4
     /// tokens per word keeps a chunk inside 512 tokens).
@@ -47,6 +49,21 @@ pub struct EngineConfig {
     /// "Almost nothing" / "most" for the disagreement test.
     pub disagreement_low_share: f32,
     pub disagreement_high_share: f32,
+
+    // ---- combining evidence (docs/detector-ensemble.md)
+    /// Context gate: a sentence can only read AI when desklib's score for its
+    /// doc chunk (the whole text, or the `doc_chunk_words` passage around it)
+    /// is at least this; otherwise the sentence's score is capped at that
+    /// chunk score. desklib's ~50-word windows misread plain human prose
+    /// (Enron emails, Wikipedia) as AI while its read of the whole text stays
+    /// human, so a window alone isn't enough to accuse. 0 = off.
+    pub context_gate: f32,
+    /// With a second, style detector (rasbt): a sentence is lifted to its
+    /// paragraph's style score when that score is at least this, gate or not.
+    /// rasbt catches plain / brand-voice AI that desklib reads as human, but
+    /// only its confident paragraph-level reads are trustworthy: its windows
+    /// fire on human prose, and 0.9 already let a Wikipedia text through.
+    pub style_lift_threshold: f32,
 
     // ---- classification + confidence
     /// A sentence counts as AI when its P(AI) is at or above this.
@@ -91,6 +108,8 @@ impl Default for EngineConfig {
             disagreement_doc_score: 0.8,
             disagreement_low_share: 0.1,
             disagreement_high_share: 0.5,
+            context_gate: 0.5,
+            style_lift_threshold: 0.95,
             ai_threshold: 0.5,
             ambiguous_low: 0.15,
             ambiguous_high: 0.85,
