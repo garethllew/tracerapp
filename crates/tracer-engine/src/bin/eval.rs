@@ -4,6 +4,8 @@
 //!   cargo run --release --bin eval -- --verbose        # + per-sentence scores for mixed samples
 //!   cargo run --release --bin eval -- --bench          # 500-word latency
 //!   cargo run --release --bin eval -- --raw            # whole-sample P(AI), for parity with Python
+//!   cargo run --release --bin eval -- --dump FILE      # per-span scores (windows, paragraph groups, doc
+//!                                                      #   chunks) as TSV, for offline rule sweeps
 //!
 //! Options: --samples DIR  --model-dir DIR  --model ensemble|FILE (default ensemble = desklib + rasbt, max)
 //!          --threads N  --overlap N  --no-doc
@@ -16,6 +18,8 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use anyhow::{bail, Context, Result};
+use tracer_engine::text::{paragraph_ids, segment};
+use tracer_engine::window::{build_doc_chunks, build_grouped_windows, build_groups};
 use tracer_engine::{analyze, models, Analysis, Detector, DetectorOptions, EngineConfig, Gate, OnnxDetector, PieceKind};
 
 const ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
@@ -31,6 +35,7 @@ struct Args {
     budget: Option<usize>,
     bench: bool,
     raw: bool,
+    dump: Option<PathBuf>,
     verbose: bool,
 }
 
@@ -46,6 +51,7 @@ fn parse_args() -> Result<Args> {
         budget: None,
         bench: false,
         raw: false,
+        dump: None,
         verbose: false,
     };
     let mut it = std::env::args().skip(1);
@@ -62,6 +68,7 @@ fn parse_args() -> Result<Args> {
             "--budget" => a.budget = Some(val()?.parse()?),
             "--bench" => a.bench = true,
             "--raw" => a.raw = true,
+            "--dump" => a.dump = Some(val()?.into()),
             "--verbose" | "-v" => a.verbose = true,
             "--help" | "-h" => {
                 println!("{}", include_str!("eval.rs").lines().take_while(|l| l.starts_with("//!")).map(|l| l.trim_start_matches("//!")).collect::<Vec<_>>().join("\n"));
@@ -177,6 +184,9 @@ fn main() -> Result<()> {
         eprintln!("raw: {} samples scored one at a time in {total:.2}s", samples.len());
         return Ok(());
     }
+    if let Some(path) = &args.dump {
+        return dump(det, &samples, &cfg, path);
+    }
     if args.bench {
         return bench(det, &samples, &cfg);
     }
@@ -291,5 +301,43 @@ fn bench(det: &dyn Detector, samples: &[Sample], cfg: &EngineConfig) -> Result<(
             times[times.len() - 1]
         );
     }
+    Ok(())
+}
+
+/// Per-span scores for offline combination-rule sweeps (tools/model-export/
+/// sweep_rules.py). Mirrors analyze()'s spans: windows, paragraph groups
+/// (chunked like the doc pass when long) and doc chunks. One TSV row per span:
+///   sample  expected  expected_share  kind  start  end  words  p
+/// plus one `sent` row per sample listing its sentence word counts.
+fn dump(det: &dyn Detector, samples: &[Sample], cfg: &EngineConfig, path: &Path) -> Result<()> {
+    use std::fmt::Write as _;
+    let mut out = String::new();
+    for s in samples {
+        let pieces = segment(&s.body, cfg);
+        let prose: Vec<usize> = pieces.iter().enumerate().filter(|(_, p)| p.kind == PieceKind::Prose).map(|(i, _)| i).collect();
+        let sw: Vec<usize> = prose.iter().map(|&i| pieces[i].words).collect();
+        if sw.iter().sum::<usize>() < cfg.min_words || sw.iter().sum::<usize>() > cfg.max_scored_words {
+            continue;
+        }
+        let para_of = paragraph_ids(&s.body, &pieces);
+        let sp: Vec<usize> = prose.iter().map(|&i| para_of[i]).collect();
+        let groups = build_groups(&sw, &sp, cfg);
+        let mut spans: Vec<(&str, std::ops::Range<usize>)> = Vec::new();
+        spans.extend(build_grouped_windows(&sw, &groups, cfg).into_iter().map(|r| ("win", r)));
+        for g in &groups {
+            spans.extend(build_doc_chunks(&sw[g.clone()], cfg).into_iter().map(|r| ("group", g.start + r.start..g.start + r.end)));
+        }
+        spans.extend(build_doc_chunks(&sw, cfg).into_iter().map(|r| ("doc", r)));
+        let texts: Vec<String> = spans.iter().map(|(_, r)| prose[r.clone()].iter().map(|&i| pieces[i].model_text.as_str()).collect::<Vec<_>>().join(" ")).collect();
+        let probs = det.score(&texts)?;
+        let sents = sw.iter().map(|w| w.to_string()).collect::<Vec<_>>().join(",");
+        writeln!(out, "{}\t{}\t{}\tsent\t0\t{}\t{}\t{sents}", s.name, s.expected, s.expected_share, sw.len(), sw.iter().sum::<usize>())?;
+        for ((kind, r), p) in spans.iter().zip(probs) {
+            writeln!(out, "{}\t{}\t{}\t{kind}\t{}\t{}\t{}\t{p:.6}", s.name, s.expected, s.expected_share, r.start, r.end, sw[r.clone()].iter().sum::<usize>())?;
+        }
+        eprint!(".");
+    }
+    std::fs::write(path, out)?;
+    eprintln!("\nwrote {}", path.display());
     Ok(())
 }
