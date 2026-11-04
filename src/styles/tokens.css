@@ -1,0 +1,135 @@
+@import "./fonts.css";
+@import "tailwindcss";
+
+/* ── Tracer design tokens ──
+   Vixer family: same surfaces, type (Syne + DM Mono), rubber buttons and
+   window chrome as Vixer 3.x (vixerapp/src/styles/tokens.css). Human = Vixer's
+   Talk green; AI = Tracer's own violet, informational rather than alarming.
+   Dark is the hero theme; light is opt-in via [data-theme="light"]. */
+:root {
+  --page:     #0b0d10;
+  --app-bg:   #181b1f;
+  --tb-bg:    #111316;
+  --tab-bg:   #13161a;
+  --surf:     #21242a;
+  --surf2:    #282c32;
+
+  /* Rubber button depth */
+  --bhi:  #3a3d44;
+  --blo:  #2c2f36;
+  --bflr: #111315;
+  --brad: 10px;
+
+  /* Text */
+  --t1: #d0d4da;
+  --t2: #878b96;
+  --t3: #6c707a;   /* Vixer uses #43474f; raised so hint text passes 3:1 on --app-bg */
+
+  /* Human — Vixer Talk green */
+  --hu:    #34d399;
+  --huhi:  #6ee7b7;
+  --huflr: #0b6e4f;
+  --hutxt: #00130b;
+  --hu-rgb: 52, 211, 153;
+  --hu-ink: #34d399;   /* text in the human colour */
+
+  /* AI — Tracer violet */
+  --ai:    #a27bff;
+  --aihi:  #c4abff;
+  --aiflr: #5a2fc4;
+  --aitxt: #13002e;
+  --ai-rgb: 162, 123, 255;
+  --ai-ink: #b499ff;   /* text in the AI colour (AA on --app-bg) */
+
+  /* Low-confidence / notices — Vixer amber, used sparingly */
+  --warn: #f5a623;
+
+  /* Highlight tint: alpha at full strength (P = 0 or 1) */
+  --tint-max: .34;
+
+  /* Borders */
+  --bdr:  rgba(255,255,255,.065);
+  --bdrs: rgba(255,255,255,.032);
+
+  --font-display: 'Syne', sans-serif;
+  --font-mono:    'DM Mono', monospace;
+
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --page:   #e6e8ec;
+  --app-bg: #f6f7f9;
+  --tb-bg:  #eceef1;
+  --tab-bg: #eef0f3;
+  --surf:   #ffffff;
+  --surf2:  #f1f2f5;
+
+  --bhi:  #ffffff;
+  --blo:  #eceef2;
+  --bflr: #c9ccd3;
+
+  --t1: #1d2025;
+  --t2: #565b66;
+  --t3: #7c818c;
+
+  --hu-ink: #0a7a55;
+  --ai-ink: #6a3fe0;
+  --warn:   #8f5507;
+  --tint-max: .30;
+
+  --bdr:  rgba(0,0,0,.09);
+  --bdrs: rgba(0,0,0,.05);
+
+  color-scheme: light;
+}
+
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  background: var(--app-bg);
+  color: var(--t1);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(127,127,127,.25); border-radius: 2px; }
+
+:focus-visible { outline: 1.5px solid var(--ai); outline-offset: 2px; }
+
+/* ══ Rubber button (Vixer s09 style) ══ */
+.rb {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: none; cursor: pointer;
+  font-family: var(--font-display); font-weight: 600;
+  color: var(--t2);
+  background: linear-gradient(180deg, var(--bhi), var(--blo));
+  box-shadow: 0 3px 0 var(--bflr), 0 5px 9px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.11);
+  border-radius: var(--brad);
+  transition: background .12s, color .1s, box-shadow .09s, transform .08s;
+  user-select: none; white-space: nowrap; position: relative;
+}
+.rb:hover  { color: var(--t1); filter: brightness(1.08); }
+.rb:active { transform: translateY(3px); box-shadow: 0 0 0 var(--bflr), 0 2px 4px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.07); }
+.rb:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+:root[data-theme="light"] .rb { box-shadow: 0 3px 0 var(--bflr), 0 4px 8px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.9); }
+
+/* Violet (AI accent = Tracer's primary) */
+.rb.a { background: linear-gradient(180deg,var(--aihi),var(--ai)); color: var(--aitxt); box-shadow: 0 3px 0 var(--aiflr), 0 5px 9px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.42); }
+.rb.a:active { box-shadow: 0 0 0 var(--aiflr), 0 2px 4px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.36); }
+
+.rb.xs  { padding: 5px 10px; font-size: 10.5px; letter-spacing: .055em; border-radius: 8px; }
+.rb.sm  { padding: 8px 13px; font-size: 12px; letter-spacing: .06em; border-radius: 9px; }
+
+/* Small uppercase label, as Vixer's section headers */
+.label {
+  font-family: var(--font-display); font-size: 10px; font-weight: 700;
+  letter-spacing: .11em; text-transform: uppercase; color: var(--t2);
+}
+.mono { font-family: var(--font-mono); }

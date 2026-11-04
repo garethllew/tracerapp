@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
-# src-tauri joins in Phase 2.
-members = ["crates/tracer-engine"]
+members = ["crates/tracer-engine", "src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
