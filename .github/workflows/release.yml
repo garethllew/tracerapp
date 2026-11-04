@@ -1,0 +1,154 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      # Optional Azure signing (see PACKAGING.md). Signing is on only when ALL
+      # of these are set.
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      TRUSTED_SIGNING_ENDPOINT: ${{ vars.TRUSTED_SIGNING_ENDPOINT }}
+      TRUSTED_SIGNING_ACCOUNT: ${{ vars.TRUSTED_SIGNING_ACCOUNT }}
+      TRUSTED_SIGNING_PROFILE: ${{ vars.TRUSTED_SIGNING_PROFILE }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check version consistency
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $tagVersion = $env:GITHUB_REF_NAME -replace '^v', ''
+          } else {
+            # workflow_dispatch: no tag, so use package.json as the reference.
+            $tagVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+            Write-Host "Not a tag run; using package.json version $tagVersion as reference."
+          }
+          $pkg   = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $tauri = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $cargo = (Select-String -Path src-tauri/Cargo.toml -Pattern '^version\s*=\s*"([^"]+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          Write-Host "tag/ref=$tagVersion package.json=$pkg tauri.conf.json=$tauri Cargo.toml=$cargo"
+          $bad = @()
+          if ($pkg   -ne $tagVersion) { $bad += "package.json ($pkg)" }
+          if ($tauri -ne $tagVersion) { $bad += "src-tauri/tauri.conf.json ($tauri)" }
+          if ($cargo -ne $tagVersion) { $bad += "src-tauri/Cargo.toml ($cargo)" }
+          if ($bad.Count -gt 0) {
+            Write-Error "Version mismatch against $tagVersion : $($bad -join ', ')"
+            exit 1
+          }
+          "VERSION=$tagVersion" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: npm ci
+
+      - run: npx tsc --noEmit
+
+      - run: cargo test -p tracer-engine --lib
+
+      - run: cargo test -p tracer --lib
+
+      - name: Decide whether to sign
+        shell: pwsh
+        run: |
+          $need = 'AZURE_CLIENT_ID','AZURE_CLIENT_SECRET','AZURE_TENANT_ID','TRUSTED_SIGNING_ENDPOINT','TRUSTED_SIGNING_ACCOUNT','TRUSTED_SIGNING_PROFILE'
+          $missing = $need | Where-Object { -not [Environment]::GetEnvironmentVariable($_) }
+          if ($missing) {
+            "SIGN=false" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            "## Unsigned build" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "Azure signing is not configured (missing: $($missing -join ', ')). These installers are **unsigned**; Windows SmartScreen will show *More info -> Run anyway*. See PACKAGING.md to enable signing." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            Write-Host "::notice::Building UNSIGNED (missing: $($missing -join ', '))"
+          } else {
+            "SIGN=true" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            "## Signed build" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "Signing with Azure Artifact Signing (account $env:TRUSTED_SIGNING_ACCOUNT, profile $env:TRUSTED_SIGNING_PROFILE)." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+
+      # Tauri's docs now name this tool artifact-signing-cli (the successor to
+      # the deprecated trusted-signing-cli, same flags and env vars).
+      - name: Install artifact-signing-cli
+        if: env.SIGN == 'true'
+        run: cargo install artifact-signing-cli --locked
+
+      - name: Write signing config
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: |
+          # Syntax from https://v2.tauri.app/distribute/sign/windows/ (Azure Artifact Signing).
+          $cmd = "artifact-signing-cli -e $env:TRUSTED_SIGNING_ENDPOINT -a $env:TRUSTED_SIGNING_ACCOUNT -c $env:TRUSTED_SIGNING_PROFILE -d Tracer %1"
+          @{ bundle = @{ windows = @{ signCommand = $cmd } } } | ConvertTo-Json -Depth 5 | Set-Content src-tauri/tauri.signing.conf.json -Encoding utf8
+
+      - name: Build (signed)
+        if: env.SIGN == 'true'
+        run: npm run tauri build -- --config src-tauri/tauri.signing.conf.json
+
+      - name: Build (unsigned)
+        if: env.SIGN != 'true'
+        run: npm run tauri build
+
+      - name: Verify signatures
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: |
+          $files = @('target/release/tracer.exe') + (Get-ChildItem target/release/bundle -Recurse -Include *.exe,*.msi | ForEach-Object FullName)
+          $failed = $false
+          foreach ($f in $files) {
+            $s = Get-AuthenticodeSignature $f
+            Write-Host "$f : $($s.Status)"
+            if ($s.Status -ne 'Valid') { $failed = $true }
+          }
+          if ($failed) { Write-Error 'One or more files are not validly signed.'; exit 1 }
+
+      - name: Collect assets, checksums and release notes
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+          $nsis = Get-ChildItem target/release/bundle/nsis -Filter *-setup.exe | Select-Object -First 1
+          $msi  = Get-ChildItem target/release/bundle/msi  -Filter *.msi       | Select-Object -First 1
+          if (-not $nsis -or -not $msi) { Write-Error 'Installer(s) not found'; exit 1 }
+          Copy-Item $nsis.FullName, $msi.FullName release-assets/
+          $lines = foreach ($f in $nsis, $msi) {
+            $h = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower()
+            "$h  $($f.Name)"
+          }
+          # LF endings, no BOM, so `sha256sum -c` works.
+          [IO.File]::WriteAllText("$PWD/release-assets/SHA256SUMS.txt", (($lines -join "`n") + "`n"))
+          Get-Content release-assets/SHA256SUMS.txt
+
+          $unsignedNote = ''
+          if ($env:SIGN -ne 'true') {
+            $unsignedNote = '**This build is not code-signed.** Windows SmartScreen may show "Windows protected your PC": click **More info**, then **Run anyway**. You can verify the download against `SHA256SUMS.txt`.'
+          }
+          $notes = (Get-Content packaging/release-notes-template.md -Raw).Replace('{{VERSION}}', $env:VERSION).Replace('{{UNSIGNED_NOTE}}', $unsignedNote)
+          Set-Content release-notes.md $notes -Encoding utf8
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tracer-windows-x64
+          path: release-assets/*
+
+      - name: Create draft release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        run: |
+          $assets = Get-ChildItem release-assets | ForEach-Object FullName
+          gh release create $env:GITHUB_REF_NAME --draft --verify-tag --title "Tracer $env:VERSION" --notes-file release-notes.md @assets
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "Draft release created for $env:GITHUB_REF_NAME. Review and publish it on GitHub." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8

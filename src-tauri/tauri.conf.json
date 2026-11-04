@@ -34,6 +34,18 @@
   "bundle": {
     "active": true,
     "targets": ["nsis", "msi"],
+    "publisher": "Rotation Studio",
+    "copyright": "© 2026 Rotation Studio",
+    "shortDescription": "Local AI-text detector",
+    "longDescription": "Tracer is a local AI-text detector. Paste text and get a per-sentence read on how likely it is to be machine-written. Everything runs on your machine and pasted text never leaves it; it is a rough gauge, not proof.",
+    "category": "Utility",
+    "homepage": "https://github.com/garethllew/tracerapp",
+    "licenseFile": "../LICENSE",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

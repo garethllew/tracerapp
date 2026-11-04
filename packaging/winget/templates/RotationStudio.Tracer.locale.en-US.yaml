@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.28.0.schema.json
+PackageIdentifier: RotationStudio.Tracer
+PackageVersion: {{VERSION}}
+PackageLocale: en-US
+Publisher: Rotation Studio
+PublisherUrl: https://github.com/garethllew
+PackageName: Tracer
+PackageUrl: https://github.com/garethllew/tracerapp
+License: MIT
+LicenseUrl: https://github.com/garethllew/tracerapp/blob/main/LICENSE
+Copyright: © 2026 Rotation Studio
+ShortDescription: Local AI-text detector
+Description: Paste text and get a per-sentence read on how likely it is to be machine-written. Everything runs on your machine; pasted text never leaves it. A rough gauge, not proof. Downloads its ~850 MB detection model once on first run.
+Moniker: tracer
+Tags:
+- ai-detection
+- privacy
+- text
+- utility
+ManifestType: defaultLocale
+ManifestVersion: 1.28.0

@@ -17,3 +17,7 @@ The app looks for `tracer-int8.onnx` and `tokenizer.json` in, in order:
 1. `$TRACER_MODEL_DIR`
 2. the app data dir, `%APPDATA%\com.tracer.app\models`
 3. debug builds only: `tools/model-export/work/onnx`
+
+## Packaging and releases
+
+See [PACKAGING.md](PACKAGING.md) for building installers, cutting a release, optional code signing, winget, and publishing a new model.
