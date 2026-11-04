@@ -1,6 +1,6 @@
 [package]
 name = "tracer"
-version = "0.1.0"
+version = "0.2.0"
 description = "Tracer - local AI-text detector"
 authors = []
 edition = "2021"

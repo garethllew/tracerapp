@@ -10,9 +10,9 @@ Download **Tracer_{{VERSION}}_x64-setup.exe** (per-user installer, no admin prom
 
 {{UNSIGNED_NOTE}}
 
-### The detection model
+### The detection models
 
-The ~850 MB detection model is not in the installer. It downloads once on first run from the `model-v1` release and is SHA-256 verified. After that Tracer works fully offline.
+The two detection models (~1.2 GB: desklib from the `model-v1` release, rasbt from `model-v2`) are not in the installer. They download once on first run and are SHA-256 verified. After that Tracer works fully offline. An install that already has `model-v1` only downloads the ~305 MB of `model-v2`.
 
 ### Checksums
 
